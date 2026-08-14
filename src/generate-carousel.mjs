@@ -11,6 +11,7 @@
 //
 // Usage:
 //   node src/generate-carousel.mjs --topic "도파민 중독의 진짜 메커니즘"
+//   node src/generate-carousel.mjs --topic "..." --tone polite
 //   node src/generate-carousel.mjs --niche brain-psychology
 //   node src/generate-carousel.mjs --topic "..." --out out.json
 import { readFile } from "node:fs/promises";
@@ -24,6 +25,7 @@ import {
 } from "./lib/carousel_contract.mjs";
 import { parseArgs, retry } from "./lib/runtime.mjs";
 import { openaiComplete, openaiGrounded } from "./lib/openai.mjs";
+import { DEFAULT_TONE, getTone, withToneInstruction } from "./lib/tone.mjs";
 
 loadEnv();
 
@@ -209,6 +211,7 @@ export async function generateCarousel({
   topic,
   initialCarousel,
   provider = "openai",
+  tone = DEFAULT_TONE,
   maxRevisions = 2,
   verify = true,
   factCheck = true,
@@ -224,8 +227,16 @@ export async function generateCarousel({
       `unknown provider '${provider}'. use: ${Object.keys(PROVIDERS).join(", ")}`,
     );
 
-  const contentSystem = await readFile(promptPath("content-system.md"), "utf8");
-  const verifySystem = await readFile(promptPath("verify-system.md"), "utf8");
+  const selectedTone = getTone(tone);
+
+  const contentSystem = withToneInstruction(
+    await readFile(promptPath("content-system.md"), "utf8"),
+    selectedTone.id,
+  );
+  const verifySystem = withToneInstruction(
+    await readFile(promptPath("verify-system.md"), "utf8"),
+    selectedTone.id,
+  );
   const factcheckSystem = await readFile(
     promptPath("factcheck-system.md"),
     "utf8",
@@ -266,6 +277,7 @@ export async function generateCarousel({
     return {
       topic,
       provider,
+      tone: selectedTone.id,
       attempts: 1,
       carousel,
       verdict: null,
@@ -354,6 +366,7 @@ export async function generateCarousel({
       return {
         topic,
         provider,
+        tone: selectedTone.id,
         attempts: round + 1,
         carousel,
         verdict: lastVerdict,
@@ -381,6 +394,7 @@ export async function generateCarousel({
   return {
     topic,
     provider,
+    tone: selectedTone.id,
     attempts: round + 1,
     carousel,
     verdict: lastVerdict,
@@ -399,6 +413,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     typeof args.provider === "string"
       ? args.provider
       : process.env.INSTAGRAM_TEXT_PROVIDER || "openai";
+  const tone =
+    typeof args.tone === "string"
+      ? args.tone
+      : process.env.INSTAGRAM_TONE || DEFAULT_TONE;
   const maxRevisions = Number.isFinite(Number(args["max-revisions"]))
     ? Number(args["max-revisions"])
     : 2;
@@ -418,6 +436,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     topic,
     initialCarousel,
     provider,
+    tone,
     maxRevisions,
     verify,
     factCheck,
