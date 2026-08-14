@@ -29,6 +29,34 @@ export const TONES = Object.freeze([
     instruction:
       "짧고 강한 반말과 평어를 사용한다. 첫 문장부터 결론을 선명하게 말하되, 선정적 낚시·과장·공격적인 표현은 쓰지 않는다.",
   }),
+  Object.freeze({
+    id: "storyteller",
+    label: "몰입형 스토리텔링",
+    description: "장면과 흐름이 살아 있는 이야기체",
+    instruction:
+      "독자가 장면을 따라가듯 자연스러운 존댓말로 쓴다. 구체적인 상황, 변화, 깨달음을 연결하되 허구의 경험·인물·감정은 만들어내지 않는다.",
+  }),
+  Object.freeze({
+    id: "witty",
+    label: "가벼운 위트",
+    description: "재치 있지만 가볍지 않은 대화체",
+    instruction:
+      "센스 있는 반말과 평어를 사용한다. 짧은 비유나 예상 밖의 표현으로 재미를 더하되, 억지 밈·비꼼·아재개그·정보를 가리는 농담은 쓰지 않는다.",
+  }),
+  Object.freeze({
+    id: "teacher",
+    label: "친절한 설명형",
+    description: "처음 보는 사람도 이해하기 쉽게",
+    instruction:
+      "쉬운 존댓말로 차근차근 설명한다. 어려운 개념은 일상적인 예시와 짧은 정의로 풀되, 독자를 어린아이처럼 대하거나 같은 말을 반복하지 않는다.",
+  }),
+  Object.freeze({
+    id: "analytical",
+    label: "논리적인 분석형",
+    description: "원인·근거·결론이 선명한 문체",
+    instruction:
+      "단정하고 중립적인 존댓말로 쓴다. 원인, 근거, 결과의 연결을 분명히 하되 보고서체·과도한 전문용어·근거 없는 단정은 피한다.",
+  }),
 ]);
 
 export function getTone(id = DEFAULT_TONE) {

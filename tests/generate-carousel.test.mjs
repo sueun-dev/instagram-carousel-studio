@@ -331,10 +331,21 @@ test("tone presets are stable and reject unknown values", () => {
   assert.equal(DEFAULT_TONE, "casual");
   assert.deepEqual(
     TONES.map((tone) => tone.id),
-    ["casual", "polite", "expert", "punchy"],
+    [
+      "casual",
+      "polite",
+      "expert",
+      "punchy",
+      "storyteller",
+      "witty",
+      "teacher",
+      "analytical",
+    ],
   );
+  assert.equal(new Set(TONES.map((tone) => tone.instruction)).size, 8);
   assert.match(toneInstruction("expert"), /차분한 전문가 \(expert\)/);
   assert.equal(getTone("punchy").label, "짧고 강한 직설");
+  assert.equal(getTone("storyteller").label, "몰입형 스토리텔링");
   assert.throws(() => getTone("unknown"), /unknown tone 'unknown'/);
 });
 

@@ -12,6 +12,16 @@ function carouselResult(topic = "통합 테스트") {
     provider: "fake",
     passed: true,
     attempts: 1,
+    verdict: {
+      verdict: "pass",
+      overall: "fixture passed",
+      cards: Array.from({ length: 5 }, (_, index) => ({
+        n: index + 1,
+        novelty: 4,
+        truth: 5,
+        human: 4,
+      })),
+    },
     carousel: {
       topic,
       hook: "통합 테스트 훅",
@@ -140,6 +150,12 @@ test("Studio API integrates generation, image files, publish PNGs, listing, and 
       app.headers.get("content-type"),
       "text/javascript; charset=utf-8",
     );
+    const appText = await app.text();
+    assert.ok(
+      appText.indexOf("<span>제목</span>") <
+        appText.indexOf("<span>소제목</span>"),
+      "card editor should show title before kicker",
+    );
 
     const generatedResponse = await postJson(baseUrl, "/api/generate", {
       topic: "서버 통합",
@@ -210,6 +226,88 @@ test("Studio API integrates generation, image files, publish PNGs, listing, and 
   });
 });
 
+test("Studio saves manual card and social copy edits before image production", async () => {
+  await withStudio(fakeSuccessRunner, async ({ baseUrl, outputRoot }) => {
+    const generatedResponse = await postJson(baseUrl, "/api/generate", {
+      topic: "수정 저장",
+      verify: true,
+    });
+    const generated = await generatedResponse.json();
+    const directory = join(outputRoot, generated.dir.slice("output/".length));
+
+    assert.equal(
+      (await postJson(baseUrl, "/api/images", { dir: generated.dir })).status,
+      200,
+    );
+    await Promise.all(
+      Array.from({ length: 5 }, (_, index) =>
+        fetch(
+          `${baseUrl}/api/publish-image?dir=${encodeURIComponent(generated.dir)}&card=${index + 1}`,
+          {
+            method: "POST",
+            headers: { "content-type": "image/png" },
+            body: pngHeader(),
+          },
+        ),
+      ),
+    );
+
+    const edited = JSON.parse(JSON.stringify(generated.result.carousel));
+    edited.cards[1].headline = "직접 고친 두 번째 카드 제목";
+    edited.cards[1].body =
+      "사용자가 직접 다듬은 문장이 저장되고 다음 카드 이미지에도 그대로 반영되는지 확인합니다.";
+    edited.caption =
+      "직접 다듬은 Instagram 캡션입니다. 저장된 문구가 게시용 텍스트 파일에도 정확히 반영됩니다.";
+    edited.hashtags = "#직접수정 #콘텐츠편집 #인스타그램";
+
+    const savedResponse = await postJson(baseUrl, "/api/carousel", {
+      dir: generated.dir,
+      carousel: edited,
+    });
+    assert.equal(savedResponse.status, 200);
+    const saved = await savedResponse.json();
+    assert.deepEqual(saved.invalidatedImages, [2]);
+    assert.equal(saved.result.passed, false);
+    assert.equal(saved.result.editState.manuallyEdited, true);
+    assert.equal(saved.result.editState.verifiedBeforeManualEdit, true);
+    assert.deepEqual(saved.result.editState.editedCards, [2]);
+    assert.equal(saved.result.editState.socialCopyEdited, true);
+    assert.equal(saved.result.carousel.cards[1].manualEdited, true);
+    assert.equal(saved.result.carousel.cards[0].manualEdited, false);
+
+    assert.equal(existsSync(join(directory, "instagram-01.png")), true);
+    assert.equal(existsSync(join(directory, "instagram-02.png")), false);
+    assert.equal(
+      existsSync(join(directory, "card-2.png")),
+      true,
+      "the reusable background should remain",
+    );
+    assert.match(
+      await readFile(join(directory, "caption.txt"), "utf8"),
+      /#직접수정 #콘텐츠편집 #인스타그램/,
+    );
+    const persisted = JSON.parse(
+      await readFile(join(directory, "carousel.json"), "utf8"),
+    );
+    assert.equal(
+      persisted.carousel.cards[1].headline,
+      edited.cards[1].headline,
+    );
+
+    edited.cards[1].body = "너무 짧음";
+    const invalid = await postJson(baseUrl, "/api/carousel", {
+      dir: generated.dir,
+      carousel: edited,
+    });
+    assert.equal(invalid.status, 400);
+    assert.ok(
+      (await invalid.json()).details.some((detail) =>
+        detail.includes("body too thin"),
+      ),
+    );
+  });
+});
+
 test("Studio exposes writing tones and forwards the saved tone to generation", async () => {
   let generationArgs;
   const runner = async (args) => {
@@ -232,7 +330,16 @@ test("Studio exposes writing tones and forwards the saved tone to generation", a
     assert.equal(state.auth.codex.method, "chatgpt");
     assert.deepEqual(
       state.tones.map((tone) => tone.id),
-      ["casual", "polite", "expert", "punchy"],
+      [
+        "casual",
+        "polite",
+        "expert",
+        "punchy",
+        "storyteller",
+        "witty",
+        "teacher",
+        "analytical",
+      ],
     );
     assert.equal(state.settings.tone, "casual");
 
@@ -251,7 +358,19 @@ test("Studio exposes writing tones and forwards the saved tone to generation", a
     );
     assert.ok(generationArgs.includes("--generate-only"));
 
+    const override = await postJson(baseUrl, "/api/generate", {
+      topic: "메인 화면 말투 선택",
+      tone: "expert",
+      verify: false,
+    });
+    assert.equal(override.status, 200);
+    assert.equal(
+      generationArgs[generationArgs.indexOf("--tone") + 1],
+      "expert",
+    );
+
     const page = await (await fetch(`${baseUrl}/`)).text();
+    assert.match(page, /id="p-tone"/);
     assert.match(page, /id="s-tone"/);
     assert.match(page, /id="s-textProvider"/);
   });

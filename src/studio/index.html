@@ -24,8 +24,8 @@
           <h2>실제 제작 (production)</h2>
           <p class="desc">
             먼저 5~8장 글과 캡션을 만들고 검증합니다. 내용을 확인한 뒤 글을
-            확정하면 gpt-image-2 배경과 Instagram 4:5 최종 이미지까지
-            제작합니다.
+            페이지별로 직접 다듬고 저장한 다음, gpt-image-2 배경과 Instagram 4:5
+            최종 이미지까지 제작합니다.
           </p>
           <div class="connection-strip" aria-live="polite">
             <div class="connection-item">
@@ -55,11 +55,15 @@
                 style="width: 100%"
               />
             </div>
+            <div class="field">
+              <label>말투</label
+              ><select id="p-tone" style="min-width: 190px"></select>
+            </div>
             <button class="act" id="prodBtn">글 만들기</button>
           </div>
           <p class="hint" style="margin-top: 8px">
-            분야와 키워드는 선택하지 않아도 됩니다. 주제만 입력하면 글 생성,
-            팩트체크, 재작성까지 진행합니다.
+            분야와 키워드는 선택하지 않아도 됩니다. 주제와 말투를 정하면 글
+            생성, 팩트체크, 재작성까지 진행합니다.
           </p>
           <div class="status" id="prodStatus"></div>
           <div id="prodVerdict"></div>
@@ -68,7 +72,10 @@
           <div class="production-ready" id="prodFinishBar" hidden>
             <div>
               <strong>글이 준비됐습니다</strong>
-              <span>카드와 캡션을 확인한 뒤 최종 제작을 시작하세요.</span>
+              <span
+                >카드와 캡션을 바로 수정할 수 있습니다. 저장하지 않은 수정도
+                최종 제작 전에 자동 저장됩니다.</span
+              >
             </div>
             <button class="act" id="prodFinishBtn">
               글 완성 · 이미지 제작
