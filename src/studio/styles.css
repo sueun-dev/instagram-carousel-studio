@@ -406,6 +406,40 @@ button:focus-visible {
   border-radius: 13px;
   background: var(--panel2);
 }
+.production-ready {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 16px;
+  padding: 15px 16px;
+  border: 1px solid rgba(123, 216, 143, 0.38);
+  border-radius: 13px;
+  background: linear-gradient(
+    120deg,
+    rgba(123, 216, 143, 0.11),
+    rgba(240, 168, 98, 0.06)
+  );
+}
+.production-ready[hidden] {
+  display: none;
+}
+.production-ready strong,
+.production-ready span {
+  display: block;
+}
+.production-ready strong {
+  color: var(--ok);
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+.production-ready span {
+  color: var(--ink-dim);
+  font-size: 12px;
+}
+.production-ready button {
+  flex: 0 0 auto;
+}
 .publish-package h3 {
   margin: 0 0 8px;
   font-size: 13px;
@@ -494,5 +528,9 @@ button:focus-visible {
   input[type="text"] {
     min-width: 0;
     width: 100%;
+  }
+  .production-ready {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

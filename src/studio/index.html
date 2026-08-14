@@ -16,20 +16,20 @@
       <button data-tab="prod" class="active">실제 생성</button>
       <button data-tab="gen">생성 테스트</button>
       <button data-tab="prompts">시스템 프롬프트</button>
-      <button data-tab="config">설정 &amp; 니치</button>
+      <button data-tab="config">설정 &amp; 주제</button>
     </nav>
     <main>
       <section class="tab active" id="tab-prod">
         <div class="card">
           <h2>실제 제작 (production)</h2>
           <p class="desc">
-            전체 파이프라인으로 제작 — 5~8장 가변 콘텐츠
-            검증(novelty·truth·human), gpt-image-2 배경, Instagram 4:5 최종
-            이미지, 캡션·해시태그·출처 패키지까지 자동 저장합니다.
+            먼저 5~8장 글과 캡션을 만들고 검증합니다. 내용을 확인한 뒤 글을
+            확정하면 gpt-image-2 배경과 Instagram 4:5 최종 이미지까지
+            제작합니다.
           </p>
           <div class="row">
             <div class="field">
-              <label>니치 (선택)</label
+              <label>분야 (선택)</label
               ><select id="p-niche" style="min-width: 180px"></select>
             </div>
             <div class="field">
@@ -45,16 +45,25 @@
                 style="width: 100%"
               />
             </div>
-            <button class="act" id="prodBtn">제작 시작</button>
+            <button class="act" id="prodBtn">글 만들기</button>
           </div>
           <p class="hint" style="margin-top: 8px">
-            니치와 키워드는 선택하지 않아도 됩니다. 주제만 입력하면 검증 +
-            재작성 + 이미지까지 전부 실행합니다.
+            분야와 키워드는 선택하지 않아도 됩니다. 주제만 입력하면 글 생성,
+            팩트체크, 재작성까지 진행합니다.
           </p>
           <div class="status" id="prodStatus"></div>
           <div id="prodVerdict"></div>
           <div class="cards" id="prodCards"></div>
           <div id="prodPackage"></div>
+          <div class="production-ready" id="prodFinishBar" hidden>
+            <div>
+              <strong>글이 준비됐습니다</strong>
+              <span>카드와 캡션을 확인한 뒤 최종 제작을 시작하세요.</span>
+            </div>
+            <button class="act" id="prodFinishBtn">
+              글 완성 · 이미지 제작
+            </button>
+          </div>
           <div class="imgs" id="prodImgs"></div>
         </div>
         <div class="card">
@@ -130,9 +139,9 @@
           </div>
         </div>
         <div class="card">
-          <h2>니치 / 키워드 (niches.json)</h2>
+          <h2>분야 / 키워드 예시 (niches.json)</h2>
           <p class="desc">
-            Studio 선택창에 표시되는 예시 풀. 현재 16개 니치 · 128개 키워드.
+            Studio 선택창에 표시되는 예시 풀. 현재 16개 분야 · 128개 키워드.
             JSON으로 자유롭게 추가할 수 있습니다.
           </p>
           <textarea id="niches" class="mid"></textarea>
