@@ -5,13 +5,18 @@
 //
 // Run: node src/studio-server.mjs
 import { createServer } from "node:http";
-import { readFile, writeFile, readdir, stat } from "node:fs/promises";
+import { readFile, writeFile, readdir, rm, stat } from "node:fs/promises";
 import { existsSync, createReadStream } from "node:fs";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { basename, join, extname, relative, sep } from "node:path";
 import { loadEnv } from "./lib/env.mjs";
-import { CAROUSEL_LIMITS, INSTAGRAM_IMAGE } from "./lib/carousel_contract.mjs";
+import {
+  CAROUSEL_LIMITS,
+  INSTAGRAM_IMAGE,
+  normalizeHashtags,
+  validateCarousel,
+} from "./lib/carousel_contract.mjs";
 import { codexAuthStatus } from "./lib/codex.mjs";
 import {
   instagramImageFilename,
@@ -57,6 +62,85 @@ const TEXT_MODELS = {
 // Supported reasoning tiers for the configured text providers.
 const EFFORTS = ["minimal", "low", "medium", "high", "xhigh"];
 const MOODS = ["dark", "light"];
+const EDIT_LIMITS = Object.freeze({
+  kicker: 40,
+  headline: 90,
+  body: 320,
+  caption: 2200,
+});
+
+function editableText(value) {
+  return String(value ?? "").trim();
+}
+
+function mergeCarouselEdits(current, proposed) {
+  if (!proposed || typeof proposed !== "object") {
+    return { errors: ["carousel is required"] };
+  }
+  if (!Array.isArray(proposed.cards)) {
+    return { errors: ["cards is not an array"] };
+  }
+  if (proposed.cards.length !== current.cards.length) {
+    return { errors: ["card count cannot be changed in the editor"] };
+  }
+
+  const errors = [];
+  const cards = current.cards.map((card, index) => {
+    const incoming = proposed.cards[index];
+    if (!incoming || Number(incoming.n) !== Number(card.n)) {
+      errors.push(`card ${index + 1}: order cannot be changed`);
+      return card;
+    }
+    const edited = {
+      ...card,
+      kicker: editableText(incoming.kicker),
+      headline: editableText(incoming.headline),
+      body: editableText(incoming.body),
+    };
+    for (const field of ["kicker", "headline", "body"]) {
+      if (edited[field].length > EDIT_LIMITS[field]) {
+        errors.push(
+          `card ${index + 1}: ${field} exceeds ${EDIT_LIMITS[field]} characters`,
+        );
+      }
+    }
+    return edited;
+  });
+  const caption = editableText(proposed.caption);
+  if (caption.length > EDIT_LIMITS.caption) {
+    errors.push(`caption exceeds ${EDIT_LIMITS.caption} characters`);
+  }
+
+  const carousel = {
+    ...current,
+    cards,
+    caption,
+    hashtags: normalizeHashtags(proposed.hashtags),
+  };
+  errors.push(...validateCarousel(carousel));
+  return { carousel, errors: [...new Set(errors)] };
+}
+
+function changedCardNumbers(current, edited) {
+  const fields = ["kicker", "headline", "body"];
+  return edited.cards
+    .filter((card, index) =>
+      fields.some(
+        (field) =>
+          editableText(card[field]) !==
+          editableText(current.cards[index][field]),
+      ),
+    )
+    .map((card) => Number(card.n));
+}
+
+function socialCopyChanged(current, edited) {
+  return (
+    editableText(current.caption) !== editableText(edited.caption) ||
+    JSON.stringify(normalizeHashtags(current.hashtags)) !==
+      JSON.stringify(normalizeHashtags(edited.hashtags))
+  );
+}
 
 function publicOutputPath(outputRoot, file) {
   const safeFile = resolveInside(outputRoot, file);
@@ -276,6 +360,7 @@ export function createStudioServer({
         if (!topic) return send(res, 400, { error: "topic required" });
         const settings = await readSettings();
         const textProvider = settings.textProvider || "codex";
+        const tone = normalizeTone(body.tone || settings.tone);
         if (textProvider === "codex") {
           const auth = await getCodexStatus();
           if (!auth.available) {
@@ -304,7 +389,7 @@ export function createStudioServer({
           "--provider",
           textProvider,
           "--tone",
-          settings.tone || DEFAULT_TONE,
+          tone,
           "--max-revisions",
           String(settings.maxRevisions ?? 2),
         ];
@@ -331,6 +416,90 @@ export function createStudioServer({
           result,
           post,
           dir: publicOutputPath(outputRoot, dir),
+        });
+      }
+
+      if (req.method === "POST" && path === "/api/carousel") {
+        const body = await readJsonBody(req);
+        let dir;
+        try {
+          dir = resolveOutputDirectoryPath(outputRoot, body.dir);
+        } catch {
+          return send(res, 400, { error: "bad dir" });
+        }
+        const carouselFile = join(dir, "carousel.json");
+        if (!existsSync(carouselFile)) {
+          return send(res, 400, { error: "bad dir" });
+        }
+
+        const saved = JSON.parse(await readFile(carouselFile, "utf8"));
+        const current = saved.carousel;
+        if (!current || !Array.isArray(current.cards)) {
+          return send(res, 400, { error: "saved carousel is invalid" });
+        }
+        const { carousel, errors } = mergeCarouselEdits(current, body.carousel);
+        if (errors.length) {
+          return send(res, 400, {
+            error: "수정 내용을 저장할 수 없습니다.",
+            details: errors,
+          });
+        }
+
+        const changedCards = changedCardNumbers(current, carousel);
+        const copyChanged = socialCopyChanged(current, carousel);
+        const changed = changedCards.length > 0 || copyChanged;
+        const previousEditState = saved.editState || {};
+        const editedCards = [
+          ...new Set([
+            ...(previousEditState.editedCards || []),
+            ...changedCards,
+          ]),
+        ].sort((a, b) => a - b);
+        const updatedCarousel = {
+          ...carousel,
+          cards: carousel.cards.map((card) => ({
+            ...card,
+            manualEdited:
+              card.manualEdited || editedCards.includes(Number(card.n)),
+          })),
+        };
+        const updated = changed
+          ? {
+              ...saved,
+              passed: false,
+              carousel: updatedCarousel,
+              editState: {
+                manuallyEdited: true,
+                editedAt: new Date().toISOString(),
+                editedCards,
+                socialCopyEdited:
+                  Boolean(previousEditState.socialCopyEdited) || copyChanged,
+                verificationStale: Boolean(
+                  saved.verdict || previousEditState.verificationStale,
+                ),
+                verifiedBeforeManualEdit: Boolean(
+                  (saved.verdict && saved.passed) ||
+                  previousEditState.verifiedBeforeManualEdit,
+                ),
+              },
+            }
+          : { ...saved, carousel: updatedCarousel };
+
+        if (changedCards.length) {
+          await Promise.all(
+            changedCards.map((cardNumber) =>
+              rm(join(dir, instagramImageFilename(cardNumber)), {
+                force: true,
+              }),
+            ),
+          );
+        }
+        const post = await writeInstagramPackage(updated, dir);
+        return send(res, 200, {
+          result: updated,
+          post,
+          dir: publicOutputPath(outputRoot, dir),
+          invalidatedImages: changedCards,
         });
       }
 

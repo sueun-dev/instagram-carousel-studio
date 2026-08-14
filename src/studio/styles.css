@@ -397,6 +397,90 @@ button:focus-visible {
   border-top: 1px dashed var(--line2);
   padding-top: 9px;
 }
+.editor-card {
+  padding: 14px;
+  border-color: rgba(240, 168, 98, 0.2);
+}
+.editor-card:focus-within {
+  border-color: rgba(240, 168, 98, 0.62);
+  background: #181a20;
+  box-shadow: 0 10px 30px -22px rgba(240, 168, 98, 0.62);
+}
+.card-editor-head,
+.publish-heading,
+.edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.card-editor-head {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.card-editor-head span:first-child {
+  color: var(--accent);
+  font-weight: 800;
+}
+.edit-field {
+  display: block;
+  margin-top: 9px;
+}
+.edit-field > span {
+  display: block;
+  margin: 0 0 4px 2px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.edit-input,
+input.edit-input,
+textarea.edit-input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--ink);
+  padding: 8px 9px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", system-ui,
+    sans-serif;
+  resize: vertical;
+}
+.edit-input:hover {
+  border-color: var(--line2);
+}
+.edit-input:focus {
+  border-color: var(--accent);
+  background: rgba(240, 168, 98, 0.045);
+  box-shadow: 0 0 0 3px rgba(240, 168, 98, 0.11);
+}
+.edit-kicker {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+}
+textarea.edit-headline {
+  min-height: 62px;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.38;
+}
+textarea.edit-body {
+  min-height: 116px;
+  color: var(--ink-dim);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.source-links {
+  font-size: 11px;
+}
 .badges {
   display: flex;
   gap: 7px;
@@ -422,6 +506,11 @@ button:focus-visible {
   border-color: rgba(230, 115, 122, 0.45);
   background: rgba(230, 115, 122, 0.09);
 }
+.badge.w {
+  color: var(--accent);
+  border-color: rgba(240, 168, 98, 0.46);
+  background: rgba(240, 168, 98, 0.09);
+}
 .verdict {
   margin-top: 14px;
   padding: 11px 15px;
@@ -429,6 +518,14 @@ button:focus-visible {
   border: 1px solid var(--line);
   background: var(--panel2);
   font-size: 13px;
+}
+.edited-verdict {
+  border-color: rgba(240, 168, 98, 0.38);
+  color: var(--ink-dim);
+  background: rgba(240, 168, 98, 0.065);
+}
+.edited-verdict b {
+  color: var(--accent);
 }
 .imgs {
   display: flex;
@@ -493,6 +590,47 @@ button:focus-visible {
   margin: 0 0 8px;
   font-size: 13px;
   color: var(--accent);
+}
+.publish-heading h3 {
+  margin: 0;
+}
+.edit-affordance {
+  color: var(--muted);
+  font-size: 11px;
+}
+.social-editor {
+  margin-top: 12px;
+  padding-top: 3px;
+}
+textarea.edit-caption {
+  min-height: 150px;
+  color: var(--ink-dim);
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+input.edit-hashtags {
+  color: var(--accent2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.edit-actions {
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+.edit-save-state {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.edit-save-state.dirty {
+  color: var(--accent);
+}
+.edit-save-state.saved {
+  color: var(--ok);
+}
+.edit-save-state.error {
+  color: var(--bad);
+  white-space: pre-line;
 }
 .publish-copy {
   margin: 0;
@@ -581,5 +719,14 @@ button:focus-visible {
   .production-ready {
     align-items: stretch;
     flex-direction: column;
+  }
+  .card-editor-head,
+  .publish-heading,
+  .edit-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .save-carousel-edits {
+    width: 100%;
   }
 }

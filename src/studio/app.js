@@ -1,7 +1,28 @@
 let STATE = null;
 let LAST = null; // last TEST result
-let PRODUCTION = null; // verified production copy waiting for final images
+let PRODUCTION = null; // production copy currently open in the editor
 let NICHES = {};
+
+const EDIT_STATE = {
+  prod: { dirty: false, imagesReady: false, packageReady: true },
+  test: { dirty: false, imagesReady: false, packageReady: true },
+};
+const EDIT_TARGETS = {
+  prod: {
+    cardsId: "prodCards",
+    verdictId: "prodVerdict",
+    packageId: "prodPackage",
+    statusId: "prodStatus",
+    imagesId: "prodImgs",
+  },
+  test: {
+    cardsId: "cards",
+    verdictId: "verdict",
+    packageId: "package",
+    statusId: "genStatus",
+    imagesId: "imgs",
+  },
+};
 
 const FINALIZE_LABEL = "글 완성 · 이미지 제작";
 
@@ -23,6 +44,14 @@ function safeHttpUrl(value) {
   } catch {
     return "";
   }
+}
+
+function editorData(editKey) {
+  return editKey === "prod" ? PRODUCTION : LAST;
+}
+
+function canFinalize(result) {
+  return Boolean(result?.passed || result?.editState?.manuallyEdited);
 }
 
 function textModelsFor(provider) {
@@ -133,13 +162,15 @@ async function boot() {
         `<option ${m === (STATE.settings.imageMood || "dark") ? "selected" : ""}>${m}</option>`,
     )
     .join("");
-  const tone = document.getElementById("s-tone");
-  tone.innerHTML = (STATE.tones || [])
+  const toneOptions = (STATE.tones || [])
     .map(
       ({ id, label, description }) =>
         `<option value="${esc(id)}" ${id === (STATE.settings.tone || "casual") ? "selected" : ""}>${esc(label)} — ${esc(description)}</option>`,
     )
     .join("");
+  for (const id of ["p-tone", "s-tone"]) {
+    document.getElementById(id).innerHTML = toneOptions;
+  }
   document.getElementById("s-maxRevisions").value =
     STATE.settings.maxRevisions ?? 2;
   renderConnectionStatus();
@@ -213,6 +244,7 @@ async function saveSettings() {
   });
   if (r.ok) {
     STATE.settings = settings;
+    document.getElementById("p-tone").value = settings.tone;
     renderConnectionStatus();
     renderProviderHelp(settings.textProvider);
     toast("settings");
@@ -252,17 +284,19 @@ document
   .getElementById("save-settings")
   .addEventListener("click", saveSettings);
 
-function renderResult(result, cardsId, verdictId) {
+function renderResult(result, cardsId, verdictId, editKey = "") {
   const c = result.carousel,
     v = result.verdict,
     byN = {};
   (v?.cards || []).forEach((x) => (byN[x.n] = x));
-  document.getElementById(cardsId).innerHTML = (c.cards || [])
-    .map((card) => {
+  const cardsEl = document.getElementById(cardsId);
+  cardsEl.innerHTML = (c.cards || [])
+    .map((card, index) => {
       const s = byN[card.n];
-      const badges = s
-        ? `<div class="badges"><span class="badge ${s.novelty >= 3 ? "g" : "r"}">novelty ${s.novelty}</span><span class="badge ${s.truth >= 4 ? "g" : "r"}">truth ${s.truth}</span><span class="badge ${s.human >= 3 ? "g" : "r"}">human ${s.human ?? "–"}</span></div>`
-        : "";
+      const badges =
+        s && !card.manualEdited
+          ? `<div class="badges"><span class="badge ${s.novelty >= 3 ? "g" : "r"}">novelty ${s.novelty}</span><span class="badge ${s.truth >= 4 ? "g" : "r"}">truth ${s.truth}</span><span class="badge ${s.human >= 3 ? "g" : "r"}">human ${s.human ?? "–"}</span></div>`
+          : "";
       const srcs = (card.sources || [])
         .map(safeHttpUrl)
         .filter(Boolean)
@@ -272,18 +306,32 @@ function renderResult(result, cardsId, verdictId) {
             `<a href="${esc(u)}" target="_blank" rel="noreferrer" style="color:var(--accent2)">출처${i + 1}</a>`,
         )
         .join(" ");
-      const factBadge =
-        card.factSupported === false
+      const factBadge = card.manualEdited
+        ? `<span class="badge w">수동 수정 · 재검증 전</span>`
+        : card.factSupported === false
           ? `<span class="badge r">사실 미확인</span>`
           : card.sources && card.sources.length
             ? `<span class="badge g">웹 확인</span>`
             : "";
-      return `<div class="cell"><div class="k">${esc(card.kicker || "· " + card.n)}</div><div class="h">${esc(card.headline || "")}</div><div class="b">${esc(card.body || "")}</div><div class="a">근거: ${esc(card.audit?.factBasis || "")} · ${esc(card.audit?.confidence || "")}</div><div class="badges">${factBadge}${badges ? badges.replace(/^<div class="badges">|<\/div>$/g, "") : ""} <span style="font-size:11px">${srcs}</span></div></div>`;
+      const content = editKey
+        ? `<div class="card-editor-head"><span>PAGE ${String(card.n).padStart(2, "0")}</span><span>바로 수정 가능</span></div><label class="edit-field"><span>제목</span><textarea class="edit-input edit-headline" data-edit-field="headline" maxlength="90" rows="2">${esc(card.headline || "")}</textarea></label><label class="edit-field"><span>소제목</span><input class="edit-input edit-kicker" data-edit-field="kicker" type="text" maxlength="40" value="${esc(card.kicker || "")}" placeholder="짧은 소제목" /></label><label class="edit-field"><span>본문</span><textarea class="edit-input edit-body" data-edit-field="body" maxlength="320" rows="5">${esc(card.body || "")}</textarea></label>`
+        : `<div class="k">${esc(card.kicker || "· " + card.n)}</div><div class="h">${esc(card.headline || "")}</div><div class="b">${esc(card.body || "")}</div>`;
+      return `<div class="cell ${editKey ? "editor-card" : ""}" data-card-index="${index}">${content}<div class="a">근거: ${esc(card.audit?.factBasis || "")} · ${esc(card.audit?.confidence || "")}</div><div class="badges">${factBadge}${badges ? badges.replace(/^<div class="badges">|<\/div>$/g, "") : ""} <span class="source-links">${srcs}</span></div></div>`;
     })
     .join("");
-  document.getElementById(verdictId).innerHTML = v
-    ? `<div class="verdict">심사: <b>${esc(v.verdict)}</b> — ${esc(v.overall || "")}</div>`
-    : `<div class="verdict">검증 스킵(생성만).</div>`;
+  if (editKey) {
+    cardsEl
+      .querySelectorAll("[data-edit-field]")
+      .forEach((field) =>
+        field.addEventListener("input", () => markEditorDirty(editKey)),
+      );
+  }
+  const editState = result.editState;
+  document.getElementById(verdictId).innerHTML = editState?.manuallyEdited
+    ? `<div class="verdict edited-verdict"><b>수동 수정본</b> · 수정된 문구는 아직 다시 검증하지 않았습니다.${editState.verifiedBeforeManualEdit ? " 기존 심사 결과는 수정 전 버전 기준입니다." : ""}</div>`
+    : v
+      ? `<div class="verdict">심사: <b>${esc(v.verdict)}</b> — ${esc(v.overall || "")}</div>`
+      : `<div class="verdict">검증 스킵(생성만).</div>`;
 }
 
 function publishText(carousel) {
@@ -299,6 +347,7 @@ function renderPackage(
   targetId,
   imagesReady = false,
   packageReady = true,
+  editKey = "",
 ) {
   const el = document.getElementById(targetId);
   if (!el || !carousel) return;
@@ -319,14 +368,159 @@ function renderPackage(
       );
     }
   }
-  el.innerHTML = `<div class="publish-package"><h3>Instagram 게시글</h3><pre class="publish-copy">${esc(publishText(carousel))}</pre><div class="downloads"><button class="ghost copy-publish" type="button">글 복사</button>${links.join("")}</div></div>`;
+  const copy = editKey
+    ? `<div class="social-editor"><label class="edit-field"><span>캡션</span><textarea class="edit-input edit-caption" maxlength="2200" rows="7">${esc(carousel.caption || "")}</textarea></label><label class="edit-field"><span>해시태그 · 3~12개</span><input class="edit-input edit-hashtags" type="text" value="${esc((carousel.hashtags || []).map((tag) => `#${String(tag).replace(/^#+/, "")}`).join(" "))}" placeholder="#인스타그램 #콘텐츠 #캐러셀" /></label><div class="edit-actions"><button class="act save-carousel-edits" type="button" disabled>수정 내용 저장</button><span class="edit-save-state">저장된 내용입니다.</span></div></div>`
+    : `<pre class="publish-copy">${esc(publishText(carousel))}</pre>`;
+  el.innerHTML = `<div class="publish-package"><div class="publish-heading"><h3>Instagram 게시글</h3>${editKey ? '<span class="edit-affordance">카드와 글을 직접 고칠 수 있어요</span>' : ""}</div>${copy}<div class="downloads"><button class="ghost copy-publish" type="button">글 복사</button>${links.join("")}</div></div>`;
+  if (editKey) {
+    el.querySelectorAll(".edit-caption, .edit-hashtags").forEach((field) =>
+      field.addEventListener("input", () => markEditorDirty(editKey)),
+    );
+    el.querySelector(".save-carousel-edits").addEventListener("click", () =>
+      saveCarouselEdits(editKey),
+    );
+  }
   el.querySelector(".copy-publish").addEventListener("click", async (event) => {
-    await navigator.clipboard.writeText(publishText(carousel));
+    const current = editKey ? collectCarouselEdits(editKey) : carousel;
+    await navigator.clipboard.writeText(publishText(current));
     event.currentTarget.textContent = "복사됨 ✓";
     setTimeout(() => {
       event.currentTarget.textContent = "글 복사";
     }, 1400);
   });
+}
+
+function renderEditor(editKey) {
+  const data = editorData(editKey);
+  const target = EDIT_TARGETS[editKey];
+  const state = EDIT_STATE[editKey];
+  if (!data?.result?.carousel || !target) return;
+  renderResult(data.result, target.cardsId, target.verdictId, editKey);
+  renderPackage(
+    data.result.carousel,
+    data.dir,
+    target.packageId,
+    state.imagesReady,
+    state.packageReady,
+    editKey,
+  );
+}
+
+function markEditorDirty(editKey) {
+  const state = EDIT_STATE[editKey];
+  const packageEl = document.getElementById(EDIT_TARGETS[editKey].packageId);
+  if (!state || !packageEl) return;
+  state.dirty = true;
+  packageEl.querySelector(".save-carousel-edits")?.removeAttribute("disabled");
+  const label = packageEl.querySelector(".edit-save-state");
+  if (label) {
+    label.className = "edit-save-state dirty";
+    label.textContent = "저장 전 · 이미지 제작 시 자동 저장됩니다.";
+  }
+}
+
+function collectCarouselEdits(editKey) {
+  const data = editorData(editKey);
+  const target = EDIT_TARGETS[editKey];
+  const cardsRoot = document.getElementById(target.cardsId);
+  const packageRoot = document.getElementById(target.packageId);
+  const carousel = {
+    ...data.result.carousel,
+    cards: data.result.carousel.cards.map((card) => ({ ...card })),
+  };
+  cardsRoot.querySelectorAll(".editor-card").forEach((cardEl) => {
+    const index = Number(cardEl.dataset.cardIndex);
+    for (const field of ["kicker", "headline", "body"]) {
+      carousel.cards[index][field] = cardEl.querySelector(
+        `[data-edit-field="${field}"]`,
+      ).value;
+    }
+  });
+  const caption = packageRoot.querySelector(".edit-caption");
+  const hashtags = packageRoot.querySelector(".edit-hashtags");
+  if (caption) carousel.caption = caption.value;
+  if (hashtags) carousel.hashtags = hashtags.value;
+  return carousel;
+}
+
+async function saveCarouselEdits(editKey, { silent = false } = {}) {
+  const state = EDIT_STATE[editKey];
+  const data = editorData(editKey);
+  if (!state?.dirty || !data) return data;
+  const packageEl = document.getElementById(EDIT_TARGETS[editKey].packageId);
+  const button = packageEl.querySelector(".save-carousel-edits");
+  const label = packageEl.querySelector(".edit-save-state");
+  button.disabled = true;
+  button.textContent = "저장 중…";
+  try {
+    const response = await fetch("/api/carousel", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        dir: data.dir,
+        carousel: collectCarouselEdits(editKey),
+      }),
+    });
+    const saved = await response.json();
+    if (!response.ok) {
+      const details = Array.isArray(saved.details)
+        ? `\n${saved.details.join("\n")}`
+        : "";
+      throw new Error((saved.error || "저장 실패") + details);
+    }
+    data.result = saved.result;
+    data.post = saved.post;
+    state.dirty = false;
+    if (saved.invalidatedImages?.length) {
+      state.imagesReady = false;
+      data.hasPublishImages = false;
+      document.getElementById(EDIT_TARGETS[editKey].imagesId).innerHTML = "";
+    }
+    renderEditor(editKey);
+    const refreshedPackage = document.getElementById(
+      EDIT_TARGETS[editKey].packageId,
+    );
+    const savedLabel = refreshedPackage.querySelector(".edit-save-state");
+    if (savedLabel) {
+      savedLabel.className = "edit-save-state saved";
+      savedLabel.textContent = "저장됨 · 다음 이미지 제작에 반영됩니다. ✓";
+    }
+    if (editKey === "prod" && !state.imagesReady && canFinalize(data.result)) {
+      offerProductionFinalizer(data);
+    }
+    if (!silent) {
+      document.getElementById(EDIT_TARGETS[editKey].statusId).textContent =
+        saved.invalidatedImages?.length
+          ? `수정 저장 완료 · ${saved.invalidatedImages.join(", ")}번 카드의 최종 이미지를 새 문구로 다시 만들 수 있습니다.`
+          : "캡션과 해시태그 수정 저장 완료.";
+    }
+    loadLibrary();
+    return data;
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "수정 내용 저장";
+    label.className = "edit-save-state error";
+    label.textContent = error.message;
+    if (silent) throw error;
+    return null;
+  }
+}
+
+async function backgroundFiles(data) {
+  if (data.hasBackgroundImages) {
+    return data.result.carousel.cards.map((card) =>
+      fileUrl(`${data.dir}/card-${card.n}.png`),
+    );
+  }
+  const response = await fetch("/api/images", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ dir: data.dir }),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || "이미지 실패");
+  data.hasBackgroundImages = true;
+  return payload.files;
 }
 
 function wrap(ctx, text, maxW) {
@@ -526,8 +720,14 @@ async function generate() {
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || "실패");
     LAST = data;
-    renderResult(data.result, "cards", "verdict");
-    renderPackage(data.result.carousel, data.dir, "package");
+    LAST.hasBackgroundImages = false;
+    LAST.hasPublishImages = false;
+    Object.assign(EDIT_STATE.test, {
+      dirty: false,
+      imagesReady: false,
+      packageReady: true,
+    });
+    renderEditor("test");
     document.getElementById("genStatus").textContent =
       `완료 · passed=${data.result.passed} · attempts=${data.result.attempts}`;
     document.getElementById("imgBar").style.display = "flex";
@@ -542,19 +742,23 @@ async function genImages() {
   if (!LAST) return;
   const btn = document.getElementById("imgBtn");
   btn.disabled = true;
-  document.getElementById("imgStatus").innerHTML =
-    `<span class="spinner"></span> 이미지 생성 중… (${LAST.result.carousel.cards.length}장)`;
   try {
-    const r = await fetch("/api/images", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ dir: LAST.dir }),
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || "실패");
+    await saveCarouselEdits("test", { silent: true });
+    document.getElementById("imgStatus").innerHTML =
+      `<span class="spinner"></span> ${LAST.hasBackgroundImages ? "기존 배경으로 카드 합성 중" : "이미지 생성 중"}… (${LAST.result.carousel.cards.length}장)`;
+    const files = await backgroundFiles(LAST);
     document.getElementById("imgStatus").textContent = "완료. 카드 합성 중…";
-    await composite(LAST.result.carousel.cards, data.files, "imgs", LAST.dir);
-    renderPackage(LAST.result.carousel, LAST.dir, "package", true);
+    await composite(LAST.result.carousel.cards, files, "imgs", LAST.dir);
+    LAST.hasPublishImages = true;
+    EDIT_STATE.test.imagesReady = true;
+    renderPackage(
+      LAST.result.carousel,
+      LAST.dir,
+      "package",
+      true,
+      true,
+      "test",
+    );
     document.getElementById("imgStatus").textContent =
       "1080×1350 게시용 PNG 저장 완료";
   } catch (e) {
@@ -583,6 +787,7 @@ function offerProductionFinalizer(data) {
 
 async function produceCopy() {
   const topic = document.getElementById("p-topic").value.trim();
+  const tone = document.getElementById("p-tone").value;
   if (!topic) return alert("주제를 선택하거나 입력하세요");
   const btn = document.getElementById("prodBtn");
   btn.disabled = true;
@@ -598,12 +803,19 @@ async function produceCopy() {
     const r = await fetch("/api/generate", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ topic, verify: true }),
+      body: JSON.stringify({ topic, tone, verify: true }),
     });
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || "실패");
-    renderResult(data.result, "prodCards", "prodVerdict");
-    renderPackage(data.result.carousel, data.dir, "prodPackage");
+    PRODUCTION = data;
+    PRODUCTION.hasBackgroundImages = false;
+    PRODUCTION.hasPublishImages = false;
+    Object.assign(EDIT_STATE.prod, {
+      dirty: false,
+      imagesReady: false,
+      packageReady: true,
+    });
+    renderEditor("prod");
     if (!data.result.passed) {
       document.getElementById("prodStatus").textContent =
         "글 검증 미통과 · 최종 제작은 열리지 않습니다. 카드와 캡션 피드백을 확인하세요.";
@@ -621,34 +833,36 @@ async function produceCopy() {
 }
 
 async function finishProduction() {
-  if (!PRODUCTION?.result?.passed) return;
+  if (!PRODUCTION) return;
   const button = document.getElementById("prodFinishBtn");
   button.disabled = true;
   button.textContent = "최종 제작 중…";
   document.getElementById("prodImgs").innerHTML = "";
-  document.getElementById("prodStatus").innerHTML =
-    `<span class="spinner"></span> 이미지 생성 중… (${PRODUCTION.result.carousel.cards.length}장)`;
   try {
-    const response = await fetch("/api/images", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ dir: PRODUCTION.dir }),
-    });
-    const imageData = await response.json();
-    if (!response.ok) throw new Error(imageData.error || "이미지 실패");
+    await saveCarouselEdits("prod", { silent: true });
+    if (!canFinalize(PRODUCTION.result)) {
+      throw new Error("최종 제작 전에 카드 내용을 저장해 주세요.");
+    }
+    document.getElementById("prodStatus").innerHTML =
+      `<span class="spinner"></span> ${PRODUCTION.hasBackgroundImages ? "기존 배경으로 카드 합성 중" : "이미지 생성 중"}… (${PRODUCTION.result.carousel.cards.length}장)`;
+    const files = await backgroundFiles(PRODUCTION);
     document.getElementById("prodStatus").textContent =
       "이미지 생성 완료 · 게시용 카드 합성 중…";
     await composite(
       PRODUCTION.result.carousel.cards,
-      imageData.files,
+      files,
       "prodImgs",
       PRODUCTION.dir,
     );
+    PRODUCTION.hasPublishImages = true;
+    EDIT_STATE.prod.imagesReady = true;
     renderPackage(
       PRODUCTION.result.carousel,
       PRODUCTION.dir,
       "prodPackage",
       true,
+      true,
+      "prod",
     );
     document.getElementById("prodStatus").textContent =
       `최종 제작 완료 · Instagram 게시 패키지 저장됨 (${PRODUCTION.dir})`;
@@ -699,7 +913,18 @@ async function openSaved(item) {
     const result = await (
       await fetch("/file?path=" + encodeURIComponent(dir + "/carousel.json"))
     ).json();
-    renderResult(result, "prodCards", "prodVerdict");
+    PRODUCTION = {
+      result,
+      dir,
+      hasBackgroundImages: item.hasImages,
+      hasPublishImages: item.hasPublishImages,
+    };
+    Object.assign(EDIT_STATE.prod, {
+      dirty: false,
+      imagesReady: item.hasPublishImages,
+      packageReady: item.hasPostPackage,
+    });
+    renderEditor("prod");
     const cards = result.carousel.cards;
     if (item.hasPublishImages) {
       document.getElementById("prodImgs").innerHTML = cards
@@ -712,9 +937,11 @@ async function openSaved(item) {
       const files = cards.map((c) => fileUrl(dir + "/card-" + c.n + ".png"));
       await composite(cards, files, "prodImgs", dir);
       item.hasPublishImages = true;
+      PRODUCTION.hasPublishImages = true;
+      EDIT_STATE.prod.imagesReady = true;
     } else {
       document.getElementById("prodImgs").innerHTML = "";
-      if (result.passed) offerProductionFinalizer({ result, dir });
+      if (canFinalize(result)) offerProductionFinalizer(PRODUCTION);
     }
     renderPackage(
       result.carousel,
@@ -722,12 +949,18 @@ async function openSaved(item) {
       "prodPackage",
       item.hasPublishImages,
       item.hasPostPackage,
+      "prod",
     );
-    document.getElementById("prodStatus").textContent = result.passed
+    document.getElementById("prodStatus").textContent = result.editState
+      ?.manuallyEdited
       ? item.hasPublishImages
-        ? `최종 제작물 불러옴: ${dir}`
-        : `글 불러옴 · 최종 이미지 제작 가능: ${dir}`
-      : `검증 미통과 글 불러옴: ${dir}`;
+        ? `수동 수정 제작물 불러옴 · 수정 문구는 재검증 전입니다: ${dir}`
+        : `수동 수정 글 불러옴 · 최종 이미지 제작 가능: ${dir}`
+      : result.passed
+        ? item.hasPublishImages
+          ? `최종 제작물 불러옴: ${dir}`
+          : `글 불러옴 · 최종 이미지 제작 가능: ${dir}`
+        : `검증 미통과 글 불러옴: ${dir}`;
   } catch (e) {
     document.getElementById("prodStatus").textContent =
       "불러오기 실패: " + e.message;
