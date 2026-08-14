@@ -63,9 +63,13 @@ async function boot() {
     NICHES = {};
   }
   const pn = document.getElementById("p-niche");
-  pn.innerHTML = Object.entries(NICHES)
-    .map(([k, v]) => `<option value="${esc(k)}">${esc(v.label || k)}</option>`)
-    .join("");
+  pn.innerHTML =
+    `<option value="">— 니치 선택 안 함 · 직접 입력 —</option>` +
+    Object.entries(NICHES)
+      .map(
+        ([k, v]) => `<option value="${esc(k)}">${esc(v.label || k)}</option>`,
+      )
+      .join("");
   pn.onchange = fillKeywords;
   fillKeywords();
   document.getElementById("p-keyword").onchange = (e) => {
@@ -78,9 +82,11 @@ async function boot() {
 function fillKeywords() {
   const k = NICHES[document.getElementById("p-niche").value];
   const list = (k && k.keywords) || [];
-  document.getElementById("p-keyword").innerHTML =
-    `<option value="">— 키워드 선택 —</option>` +
+  const keyword = document.getElementById("p-keyword");
+  keyword.innerHTML =
+    `<option value="">${k ? "— 키워드 선택 안 함 · 직접 입력 —" : "— 니치를 먼저 고르거나 직접 입력 —"}</option>` +
     list.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  keyword.disabled = !k;
 }
 
 function toast(id) {

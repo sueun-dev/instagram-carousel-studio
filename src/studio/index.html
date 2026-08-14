@@ -29,26 +29,27 @@
           </p>
           <div class="row">
             <div class="field">
-              <label>니치</label
+              <label>니치 (선택)</label
               ><select id="p-niche" style="min-width: 180px"></select>
             </div>
             <div class="field">
-              <label>키워드</label
+              <label>키워드 예시 (선택)</label
               ><select id="p-keyword" style="min-width: 220px"></select>
             </div>
             <div class="field" style="flex: 1">
-              <label>주제 (수정 가능)</label
+              <label>주제 (필수 · 직접 입력 가능)</label
               ><input
                 type="text"
                 id="p-topic"
-                placeholder="주제"
+                placeholder="직접 입력하거나 왼쪽 키워드 예시를 선택하세요"
                 style="width: 100%"
               />
             </div>
             <button class="act" id="prodBtn">제작 시작</button>
           </div>
           <p class="hint" style="margin-top: 8px">
-            검증 + 재작성 + 이미지까지 전부 실행. 수 분 걸립니다.
+            니치와 키워드는 선택하지 않아도 됩니다. 주제만 입력하면 검증 +
+            재작성 + 이미지까지 전부 실행합니다.
           </p>
           <div class="status" id="prodStatus"></div>
           <div id="prodVerdict"></div>
@@ -130,7 +131,10 @@
         </div>
         <div class="card">
           <h2>니치 / 키워드 (niches.json)</h2>
-          <p class="desc">고정 주제 풀. JSON.</p>
+          <p class="desc">
+            Studio 선택창에 표시되는 예시 풀. 현재 16개 니치 · 128개 키워드.
+            JSON으로 자유롭게 추가할 수 있습니다.
+          </p>
           <textarea id="niches" class="mid"></textarea>
           <div class="toolbar">
             <button class="act" id="save-niches">저장</button>
