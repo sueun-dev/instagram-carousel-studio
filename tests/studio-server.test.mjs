@@ -193,6 +193,37 @@ test("Studio API integrates generation, image files, publish PNGs, listing, and 
   });
 });
 
+test("Studio exposes writing tones and forwards the saved tone to generation", async () => {
+  let generationArgs;
+  const runner = async (args) => {
+    if (isScript(args, "generate-carousel.mjs")) generationArgs = args;
+    return fakeSuccessRunner(args);
+  };
+
+  await withStudio(runner, async ({ baseUrl }) => {
+    const state = await (await fetch(`${baseUrl}/api/state`)).json();
+    assert.deepEqual(
+      state.tones.map((tone) => tone.id),
+      ["casual", "polite", "expert", "punchy"],
+    );
+    assert.equal(state.settings.tone, "casual");
+
+    const response = await postJson(baseUrl, "/api/generate", {
+      topic: "말투 전달",
+      verify: false,
+    });
+    assert.equal(response.status, 200);
+    assert.equal(
+      generationArgs[generationArgs.indexOf("--tone") + 1],
+      state.settings.tone,
+    );
+    assert.ok(generationArgs.includes("--generate-only"));
+
+    const page = await (await fetch(`${baseUrl}/`)).text();
+    assert.match(page, /id="s-tone"/);
+  });
+});
+
 test("Studio remains usable after provider errors, malformed output, and image failure", async () => {
   let generationCalls = 0;
   let imageCalls = 0;

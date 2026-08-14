@@ -48,6 +48,13 @@ async function boot() {
         `<option ${m === (STATE.settings.imageMood || "dark") ? "selected" : ""}>${m}</option>`,
     )
     .join("");
+  const tone = document.getElementById("s-tone");
+  tone.innerHTML = (STATE.tones || [])
+    .map(
+      ({ id, label, description }) =>
+        `<option value="${esc(id)}" ${id === (STATE.settings.tone || "casual") ? "selected" : ""}>${esc(label)} — ${esc(description)}</option>`,
+    )
+    .join("");
   document.getElementById("s-maxRevisions").value =
     STATE.settings.maxRevisions ?? 2;
   try {
@@ -98,6 +105,7 @@ async function saveSettings() {
     ...STATE.settings,
     textModel: document.getElementById("s-textModel").value,
     effort: document.getElementById("s-effort").value,
+    tone: document.getElementById("s-tone").value,
     imageMood: document.getElementById("s-mood").value,
     maxRevisions: Number(document.getElementById("s-maxRevisions").value) || 2,
   };

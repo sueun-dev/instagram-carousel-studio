@@ -8,6 +8,12 @@ import {
   validateCarousel,
 } from "../src/generate-carousel.mjs";
 import { extractJson } from "../src/lib/json.mjs";
+import {
+  DEFAULT_TONE,
+  getTone,
+  TONES,
+  toneInstruction,
+} from "../src/lib/tone.mjs";
 
 const CARD = (n, headline) => ({
   n,
@@ -267,7 +273,9 @@ test("card and caption feedback are both revised in the same round", async () =>
   };
   let verifyCalls = 0;
   const revisions = [];
+  const systems = [];
   const callLLM = async (system, user) => {
+    systems.push(system);
     if (system.includes("편집장")) {
       verifyCalls += 1;
       return JSON.stringify({
@@ -305,12 +313,29 @@ test("card and caption feedback are both revised in the same round", async () =>
 
   const result = await generateCarousel({
     topic: "t",
+    tone: "polite",
     maxRevisions: 2,
     callLLM,
     factChecker: factAllOk,
   });
   assert.equal(result.passed, true);
+  assert.equal(result.tone, "polite");
   assert.deepEqual(revisions, [3, "caption"]);
+  assert.ok(
+    systems.every((system) => system.includes("친근한 존댓말 (polite)")),
+    "generation, verification, card revision, and caption revision all receive the selected tone",
+  );
+});
+
+test("tone presets are stable and reject unknown values", () => {
+  assert.equal(DEFAULT_TONE, "casual");
+  assert.deepEqual(
+    TONES.map((tone) => tone.id),
+    ["casual", "polite", "expert", "punchy"],
+  );
+  assert.match(toneInstruction("expert"), /차분한 전문가 \(expert\)/);
+  assert.equal(getTone("punchy").label, "짧고 강한 직설");
+  assert.throws(() => getTone("unknown"), /unknown tone 'unknown'/);
 });
 
 test("fact-check failure cannot become a verified production result", async () => {

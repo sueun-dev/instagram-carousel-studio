@@ -22,6 +22,7 @@ import {
   resolveInside,
   resolveOutputDirectoryPath,
 } from "./lib/runtime.mjs";
+import { DEFAULT_TONE, normalizeTone, TONES } from "./lib/tone.mjs";
 
 loadEnv();
 
@@ -151,12 +152,14 @@ function childEnv(settings) {
 
 async function readSettings() {
   try {
-    return JSON.parse(await readFile(FILES.settings, "utf8"));
+    const settings = JSON.parse(await readFile(FILES.settings, "utf8"));
+    return { ...settings, tone: normalizeTone(settings.tone) };
   } catch {
     return {
       textProvider: "openai",
       textModel: "gpt-5.6",
       effort: "medium",
+      tone: DEFAULT_TONE,
       imageProvider: "openai",
       maxRevisions: 2,
     };
@@ -208,6 +211,7 @@ export function createStudioServer({
           settings,
           textModels: TEXT_MODELS,
           efforts: EFFORTS,
+          tones: TONES,
           moods: MOODS,
           carouselLimits: CAROUSEL_LIMITS,
           publishImage: INSTAGRAM_IMAGE,
@@ -241,6 +245,8 @@ export function createStudioServer({
           topic,
           "--provider",
           settings.textProvider || "openai",
+          "--tone",
+          settings.tone || DEFAULT_TONE,
           "--max-revisions",
           String(settings.maxRevisions ?? 2),
         ];
