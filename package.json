@@ -1,0 +1,36 @@
+{
+  "name": "instagram-carousel-studio",
+  "version": "1.0.0",
+  "description": "Generate source-checked Instagram carousel packages with AI visuals, captions, and publish-ready 4:5 PNGs.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "instagram",
+    "carousel",
+    "content-automation",
+    "openai",
+    "image-generation",
+    "fact-checking"
+  ],
+  "scripts": {
+    "start": "node src/studio-server.mjs",
+    "generate": "node src/generate-carousel.mjs",
+    "images": "node src/generate-images.mjs",
+    "lint": "eslint src tests",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "check": "npm run lint && npm run format:check && npm test"
+  },
+  "dependencies": {
+    "openai": "^7.4.0"
+  },
+  "devDependencies": {
+    "eslint": "^10.8.1",
+    "globals": "^17.11.0",
+    "prettier": "^3.9.6"
+  }
+}

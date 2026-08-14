@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>넘김 — 컨트롤 패널</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <span class="dot"></span>
+      <h1>넘김</h1>
+      <span class="sub">넘기면서 배우는 카드 · 자동 제작</span>
+    </header>
+    <nav>
+      <button data-tab="prod" class="active">실제 생성</button>
+      <button data-tab="gen">생성 테스트</button>
+      <button data-tab="prompts">시스템 프롬프트</button>
+      <button data-tab="config">설정 &amp; 니치</button>
+    </nav>
+    <main>
+      <section class="tab active" id="tab-prod">
+        <div class="card">
+          <h2>실제 제작 (production)</h2>
+          <p class="desc">
+            전체 파이프라인으로 제작 — 5~8장 가변 콘텐츠
+            검증(novelty·truth·human), gpt-image-2 배경, Instagram 4:5 최종
+            이미지, 캡션·해시태그·출처 패키지까지 자동 저장합니다.
+          </p>
+          <div class="row">
+            <div class="field">
+              <label>니치</label
+              ><select id="p-niche" style="min-width: 180px"></select>
+            </div>
+            <div class="field">
+              <label>키워드</label
+              ><select id="p-keyword" style="min-width: 220px"></select>
+            </div>
+            <div class="field" style="flex: 1">
+              <label>주제 (수정 가능)</label
+              ><input
+                type="text"
+                id="p-topic"
+                placeholder="주제"
+                style="width: 100%"
+              />
+            </div>
+            <button class="act" id="prodBtn">제작 시작</button>
+          </div>
+          <p class="hint" style="margin-top: 8px">
+            검증 + 재작성 + 이미지까지 전부 실행. 수 분 걸립니다.
+          </p>
+          <div class="status" id="prodStatus"></div>
+          <div id="prodVerdict"></div>
+          <div class="cards" id="prodCards"></div>
+          <div id="prodPackage"></div>
+          <div class="imgs" id="prodImgs"></div>
+        </div>
+        <div class="card">
+          <h2>저장된 제작물</h2>
+          <p class="desc">
+            완료된 Instagram 캐러셀. 클릭하면 게시용 이미지와 글을 다시
+            불러옵니다.
+          </p>
+          <div id="library" class="hint">불러오는 중…</div>
+        </div>
+      </section>
+
+      <section class="tab" id="tab-prompts">
+        <div class="card">
+          <h2>콘텐츠 생성 프롬프트 (content-system)</h2>
+          <p class="desc">품질 바 + 사람 톤 규칙. 여기가 콘텐츠의 두뇌.</p>
+          <textarea id="content" class="big"></textarea>
+          <div class="toolbar">
+            <button class="act" id="save-content">저장</button>
+            <span class="toast" id="toast-content">저장됨 ✓</span>
+          </div>
+        </div>
+        <div class="card">
+          <h2>검증 프롬프트 (verify-system)</h2>
+          <p class="desc">적대적 심사관. novelty · truth · human 채점 기준.</p>
+          <textarea id="verify" class="mid"></textarea>
+          <div class="toolbar">
+            <button class="act" id="save-verify">저장</button>
+            <span class="toast" id="toast-verify">저장됨 ✓</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab" id="tab-config">
+        <div class="card">
+          <h2>모델 &amp; 추론 설정</h2>
+          <p class="desc">
+            콘텐츠는 OpenAI Responses API, 이미지는 gpt-image-2 API.
+          </p>
+          <div class="row">
+            <div class="field">
+              <label>텍스트 모델</label
+              ><select id="s-textModel"></select>
+            </div>
+            <div class="field">
+              <label>추론(effort)</label
+              ><select id="s-effort"></select>
+            </div>
+            <div class="field">
+              <label>이미지 톤</label
+              ><select id="s-mood"></select>
+            </div>
+            <div class="field">
+              <label>재작성 라운드(maxRevisions)</label
+              ><input
+                type="text"
+                id="s-maxRevisions"
+                inputmode="numeric"
+                style="width: 110px; min-width: 0"
+              />
+            </div>
+          </div>
+          <p class="hint" style="margin-top: 10px">
+            effort=high는 훨씬 느립니다(전체 루프 10분+). 기본 medium 권장.
+          </p>
+          <div class="toolbar">
+            <button class="act" id="save-settings">설정 저장</button>
+            <span class="toast" id="toast-settings">저장됨 ✓</span>
+          </div>
+        </div>
+        <div class="card">
+          <h2>니치 / 키워드 (niches.json)</h2>
+          <p class="desc">고정 주제 풀. JSON.</p>
+          <textarea id="niches" class="mid"></textarea>
+          <div class="toolbar">
+            <button class="act" id="save-niches">저장</button>
+            <span class="toast" id="toast-niches">저장됨 ✓</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab" id="tab-gen">
+        <div class="card">
+          <h2>생성 테스트 (프롬프트 튜닝용)</h2>
+          <p class="desc">
+            프롬프트·설정을 바꿔가며 빠르게 확인하는 용도. 기본은 검증 없이
+            생성만(빠름). 실제 제작은 "실제 생성" 탭에서.
+          </p>
+          <div class="row">
+            <div class="field" style="flex: 1">
+              <label>주제</label>
+              <input
+                type="text"
+                id="topic"
+                placeholder="예: 도파민 중독의 진짜 메커니즘"
+                style="width: 100%"
+              />
+            </div>
+            <label
+              style="
+                display: flex;
+                gap: 6px;
+                align-items: center;
+                color: var(--muted);
+                font-size: 13px;
+              "
+            >
+              <input type="checkbox" id="doVerify" /> 검증 포함(느림)
+            </label>
+            <button class="act" id="genBtn">콘텐츠 생성</button>
+          </div>
+          <div class="status" id="genStatus"></div>
+          <div id="verdict"></div>
+          <div class="cards" id="cards"></div>
+          <div class="toolbar" id="imgBar" style="display: none">
+            <button class="ghost" id="imgBtn">
+              이미지 생성 (gpt-image-2) + 카드 미리보기
+            </button>
+            <span class="hint">5~8장 · 장수와 제공자 상태에 따라 수 분</span>
+          </div>
+          <div class="status" id="imgStatus"></div>
+          <div id="package"></div>
+          <div class="imgs" id="imgs"></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

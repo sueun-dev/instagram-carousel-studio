@@ -1,0 +1,275 @@
+{
+  "topic": "카페인이 잠을 방해하는 시간의 진짜 기준",
+  "provider": "openai",
+  "attempts": 4,
+  "carousel": {
+    "topic": "카페인이 잠을 방해하는 시간의 진짜 기준",
+    "hook": "카페인 컷오프는 ‘오후 몇 시’가 아니라 취침까지 남은 시간과 섭취량으로 정해야 해.",
+    "cards": [
+      {
+        "n": 1,
+        "kicker": "통념 · 컷오프",
+        "headline": "오후 2시 금지는 남의 시간표야",
+        "body": "밤 10시에 자는 사람과 새벽 2시에 자는 사람에게 같은 컷오프를 줄 수는 없어. 마지막 섭취 시각보다 ‘취침까지 몇 시간 남았는지’와 ‘몇 mg을 마셨는지’가 더 중요해.",
+        "imagePrompt": "Editorial still life of a coffee cup beside an analog bedside clock showing late evening, dramatic warm amber light, generous empty space on the left for Korean text overlay, portrait 4:5 composition, no letters, no typography, no logos",
+        "audit": {
+          "novelty": "널리 쓰이는 고정 시각 기준 대신 취침 시각과 용량을 함께 봐야 한다는 판단법을 제시한다.",
+          "factBasis": "카페인의 수면 영향은 투여량, 취침 전 투여 간격, 개인별 약물 제거 속도에 따라 달라진다는 수면·약동학 연구에 근거한다.",
+          "confidence": "high"
+        },
+        "sources": [
+          "https://pubmed.ncbi.nlm.nih.gov/36870101/",
+          "https://pubmed.ncbi.nlm.nih.gov/39377163/",
+          "https://www.ncbi.nlm.nih.gov/books/NBK223808/"
+        ],
+        "factSupported": true
+      },
+      {
+        "n": 2,
+        "kicker": "계산 · 잔량",
+        "headline": "일찍 마신 대용량도 밤까지 남아",
+        "body": "반감기를 5시간으로 잡으면, 취침 10시간 전 마신 400mg 중 약 100mg이 잘 때도 몸에 남아 있어. 이건 잔량을 거칠게 계산한 값이야. 취침 무렵 100mg을 새로 마시는 것과 효과가 같다는 뜻은 아니야.",
+        "imagePrompt": "A large coffee cup far from a bed casting a long fading shadow that ends as a small concentrated pool beside the pillow, cinematic editorial still life, near-black background with warm amber glow, generous empty space on the right for Korean text overlay, portrait 4:5 composition, no letters, no typography, no logos",
+        "audit": {
+          "novelty": "취침까지 10시간이나 남았어도 고용량 카페인의 일부가 밤까지 남는다는 계산으로, 시각만 보는 컷오프의 허점을 보여준다.",
+          "factBasis": "카페인이 5시간마다 절반으로 줄어든다고 단순 가정하면 400mg은 10시간 뒤 약 100mg으로 계산된다. 이는 체내 잔량의 추정치이며, 취침 시점에 100mg을 새로 섭취했을 때의 흡수 과정이나 효과와 같다는 의미는 아니다.",
+          "confidence": "high"
+        },
+        "sources": ["https://www.ncbi.nlm.nih.gov/books/NBK223808/"],
+        "factSupported": true
+      },
+      {
+        "n": 3,
+        "kicker": "실험 · 6시간",
+        "headline": "6시간 전이면 안전? 400mg은 아니었어",
+        "body": "한 통제 실험에선 취침 6시간 전에 먹은 400mg도 총 수면시간을 1시간 넘게 줄였어. 큰 용량을 썼던 소규모 실험이라 모든 커피에 그대로 적용할 순 없지만, ‘6시간이면 무조건 안전’은 아니야.",
+        "imagePrompt": "Large dark coffee cup positioned six clock marks away from a neatly made bed, cinematic top-down editorial scene, amber highlights, generous empty space on the left for Korean text overlay, portrait 4:5 composition, no letters, no typography, no logos",
+        "audit": {
+          "novelty": "흔히 안전선처럼 말하는 취침 6시간 전에도 큰 용량은 수면을 줄였다는 구체적 결과다.",
+          "factBasis": "Drake et al., Journal of Clinical Sleep Medicine, 2013의 무작위 이중맹검 교차 연구에서 400mg을 취침 6시간 전 복용했을 때 총 수면시간이 1시간 이상 감소했다. 표본은 12명이었다.",
+          "confidence": "high"
+        },
+        "sources": [
+          "https://pmc.ncbi.nlm.nih.gov/articles/PMC3805807/",
+          "https://pubmed.ncbi.nlm.nih.gov/24235903/"
+        ],
+        "factSupported": true
+      },
+      {
+        "n": 4,
+        "kicker": "착각 · 체감",
+        "headline": "잘 잤다는 느낌도 틀릴 수 있어",
+        "body": "그 실험에서 사람들은 6시간 전 카페인의 방해를 뚜렷하게 알아채지 못했지만, 측정된 수면시간은 줄었어. ‘금방 잠들었나’만 보지 말고 실제 잔 시간과 밤중 각성도 같이 봐야 해.",
+        "imagePrompt": "Sleeping person in bed with a calm expression while a subtle fragmented clock shadow falls across the sheets, moody editorial photography, generous empty space on the right for Korean text overlay, portrait 4:5 composition, no letters, no typography, no logos",
+        "audit": {
+          "novelty": "카페인의 수면 방해를 본인이 제대로 체감하지 못할 수 있다는 측정상의 맹점을 알려준다.",
+          "factBasis": "Drake et al. 2013 연구에서 취침 6시간 전 조건은 객관적 총 수면시간을 줄였지만 주관적 수면 기록에서는 유의한 차이가 뚜렷하지 않았다.",
+          "confidence": "high"
+        },
+        "sources": [
+          "https://pmc.ncbi.nlm.nih.gov/articles/PMC3805807/",
+          "https://pubmed.ncbi.nlm.nih.gov/24235903/"
+        ],
+        "factSupported": true
+      },
+      {
+        "n": 5,
+        "kicker": "변수 · 몸 상태",
+        "headline": "같은 한 잔도 빠지는 속도가 달라져",
+        "body": "임신 중이거나 에스트로겐이 든 경구피임약을 복용하면 카페인이 더 오래 남을 수 있어. 반대로 담배 연기는 카페인 분해를 빠르게 하므로, 금연 뒤엔 예전과 같은 양이 더 오래 세게 느껴질 수 있어.",
+        "imagePrompt": "One identical coffee cup reflected into three subtly different human silhouettes, cinematic medical editorial style without symbols, near-black and amber palette, generous empty space on the left for Korean text overlay, portrait 4:5 composition, no letters, no typography, no logos",
+        "audit": {
+          "novelty": "카페인 민감도가 단순 체질뿐 아니라 임신, 피임약, 흡연 상태 변화로 달라진다는 실용적 변수다.",
+          "factBasis": "카페인을 주로 대사하는 CYP1A2 관련 약동학 자료에서 임신과 에스트로겐 함유 경구피임약은 제거를 늦추고, 담배 연기의 성분은 CYP1A2를 유도해 제거를 빠르게 하는 것으로 확립돼 있다.",
+          "confidence": "high"
+        },
+        "sources": [
+          "https://pubmed.ncbi.nlm.nih.gov/26358647/",
+          "https://pmc.ncbi.nlm.nih.gov/articles/PMC8914174/",
+          "https://pubmed.ncbi.nlm.nih.gov/15289794/"
+        ],
+        "factSupported": true
+      },
+      {
+        "n": 6,
+        "kicker": "변수 · 몸의 시계",
+        "headline": "카페인은 ‘밤 시작’도 늦출 수 있어",
+        "body": "작은 통제 실험에서 취침 3시간 전 약 200mg 수준의 카페인은 멜라토닌 리듬을 약 40분 늦췄어. 그냥 덜 졸린 데서 끝나는 게 아니라, 몸이 밤으로 넘어가는 시각까지 밀릴 수 있다는 뜻이야.",
+        "imagePrompt": "A single coffee cup casting a delayed moon-shaped shadow behind a minimalist human silhouette, cinematic scientific editorial photography, near-black background with warm amber glow and deep blue accents, generous empty space on the right for Korean text overlay, portrait 4:5 composition, no letters, no typography, no logos",
+        "audit": {
+          "novelty": "카페인이 당장의 졸림만 가리는 게 아니라 생체시계의 밤 신호까지 늦출 수 있다는 의외의 영향을 보여준다.",
+          "factBasis": "Burke et al., Science Translational Medicine, 2015의 소규모 무작위 이중맹검 교차 실험에서 평소 취침 3시간 전 체중당 2.9mg의 카페인이 멜라토닌 기준 생체시계를 약 40분 지연시켰다.",
+          "confidence": "high"
+        },
+        "sources": [
+          "https://pmc.ncbi.nlm.nih.gov/articles/PMC4657156/",
+          "https://pubmed.ncbi.nlm.nih.gov/26378246/"
+        ],
+        "factSupported": true
+      },
+      {
+        "n": 7,
+        "kicker": "실행 · 잔량 합산",
+        "headline": "마지막 잔만 계산하면 틀려",
+        "body": "반감기를 5시간으로 잡으면, 취침 10시간 전 200mg은 약 50mg이 남고 5시간 전 100mg도 약 50mg이 남아. 잘 때의 예상 잔량은 둘을 더한 약 100mg이야. 이 계산은 거친 추정치라서, 실제로 빠지는 속도는 사람마다 다르다는 것도 같이 기억해.",
+        "imagePrompt": "Several coffee cups placed along a fading timeline toward a bed, each casting a smaller amber pool of light that merges into one larger pool beside the pillow, cinematic editorial still life, near-black background, subtle film grain, generous empty space on the left for Korean text overlay, portrait 4:5 composition, no letters, no typography, no logos",
+        "audit": {
+          "novelty": "마지막 한 잔만 보는 대신 하루 동안 마신 모든 카페인의 취침 시점 잔량을 각각 계산해 합산해야 한다는 반직관적 계산법이다.",
+          "factBasis": "카페인은 각 섭취분이 독립적으로 체내에서 제거되므로, 단순한 1차 제거와 일정한 반감기를 가정한 추정에서는 섭취분별 예상 잔량을 계산한 뒤 합산할 수 있다. 다만 카페인 반감기는 개인과 상황에 따라 달라진다.",
+          "confidence": "high"
+        },
+        "sources": ["https://www.ncbi.nlm.nih.gov/books/NBK223808/"],
+        "factSupported": true
+      }
+    ],
+    "cta": "오늘 마지막 카페인의 시간과 mg부터 적어둬. 저장해두고 일주일만 앞당겨 비교해봐.",
+    "styleSpec": "near-black background + warm amber coffee glow, cinematic editorial photography, subtle film grain, high contrast, one clear subject, generous negative space, portrait 4:5, no text, no logos",
+    "caption": "‘오후 2시 이후 금지’ 같은 규칙이 유독 안 맞았다면, 네 의지 문제가 아닐 수 있어.\n\n카페인 컷오프에는 모두에게 통하는 정답이 없어. 한 잔의 시각만 떼어 보면 놓치는 변수가 꽤 많거든.\n\n이번 캐러셀은 커피를 무조건 끊자는 얘기가 아니야. 잠을 덜 방해하면서 마실 수 있는 나만의 기준을 찾는 법에 가까워.\n\n다음에 ‘지금 마셔도 되나?’ 고민될 때 다시 보게 저장해둬. 늘 같은 시간에 커피를 끊는 친구에게도 공유해줘.",
+    "hashtags": [
+      "카페인컷오프",
+      "커피와수면",
+      "카페인반감기",
+      "수면관리",
+      "카페인관리",
+      "수면과학",
+      "커피습관"
+    ]
+  },
+  "verdict": {
+    "verdict": "pass",
+    "cards": [
+      {
+        "n": 1,
+        "novelty": 3,
+        "truth": 5,
+        "human": 5,
+        "issues": "",
+        "fix": ""
+      },
+      {
+        "n": 2,
+        "novelty": 4,
+        "truth": 5,
+        "human": 4,
+        "issues": "",
+        "fix": ""
+      },
+      {
+        "n": 3,
+        "novelty": 4,
+        "truth": 5,
+        "human": 4,
+        "issues": "",
+        "fix": ""
+      },
+      {
+        "n": 4,
+        "novelty": 4,
+        "truth": 4,
+        "human": 4,
+        "issues": "객관적 수면시간 감소와 주관적 인식의 불일치는 근거가 있지만, ‘밤중 각성도 같이 보라’는 부분은 해당 결과에서 직접 도출된 핵심 결론이라기보다 실용적 확장이다.",
+        "fix": "더 엄밀하게 하려면 마지막 문장을 ‘잠든 느낌만 보지 말고 실제로 잔 시간도 같이 봐야 해’로 좁힐 수 있다."
+      },
+      {
+        "n": 5,
+        "novelty": 5,
+        "truth": 5,
+        "human": 4,
+        "issues": "",
+        "fix": ""
+      },
+      {
+        "n": 6,
+        "novelty": 5,
+        "truth": 5,
+        "human": 4,
+        "issues": "",
+        "fix": ""
+      },
+      {
+        "n": 7,
+        "novelty": 4,
+        "truth": 5,
+        "human": 4,
+        "issues": "",
+        "fix": ""
+      }
+    ],
+    "overall": "고정 시각 통념을 깨는 훅에서 시작해 잔량 계산, 실험 결과, 체감의 맹점, 개인 변수, 생체시계 영향, 합산법으로 자연스럽게 점층된다. 구체적 수치에는 출처와 한계 표시가 붙어 있고 caption도 새 미검증 사실을 보태지 않는다.",
+    "reviseInstructions": ""
+  },
+  "factVerdict": {
+    "cards": [
+      {
+        "n": 1,
+        "supported": true,
+        "confidence": "high",
+        "sources": [
+          "https://pubmed.ncbi.nlm.nih.gov/36870101/",
+          "https://pubmed.ncbi.nlm.nih.gov/39377163/",
+          "https://www.ncbi.nlm.nih.gov/books/NBK223808/"
+        ],
+        "issue": ""
+      },
+      {
+        "n": 2,
+        "supported": true,
+        "confidence": "high",
+        "sources": ["https://www.ncbi.nlm.nih.gov/books/NBK223808/"],
+        "issue": ""
+      },
+      {
+        "n": 3,
+        "supported": true,
+        "confidence": "high",
+        "sources": [
+          "https://pmc.ncbi.nlm.nih.gov/articles/PMC3805807/",
+          "https://pubmed.ncbi.nlm.nih.gov/24235903/"
+        ],
+        "issue": ""
+      },
+      {
+        "n": 4,
+        "supported": true,
+        "confidence": "high",
+        "sources": [
+          "https://pmc.ncbi.nlm.nih.gov/articles/PMC3805807/",
+          "https://pubmed.ncbi.nlm.nih.gov/24235903/"
+        ],
+        "issue": ""
+      },
+      {
+        "n": 5,
+        "supported": true,
+        "confidence": "high",
+        "sources": [
+          "https://pubmed.ncbi.nlm.nih.gov/26358647/",
+          "https://pmc.ncbi.nlm.nih.gov/articles/PMC8914174/",
+          "https://pubmed.ncbi.nlm.nih.gov/15289794/"
+        ],
+        "issue": ""
+      },
+      {
+        "n": 6,
+        "supported": true,
+        "confidence": "high",
+        "sources": [
+          "https://pmc.ncbi.nlm.nih.gov/articles/PMC4657156/",
+          "https://pubmed.ncbi.nlm.nih.gov/26378246/"
+        ],
+        "issue": ""
+      },
+      {
+        "n": 7,
+        "supported": true,
+        "confidence": "high",
+        "sources": ["https://www.ncbi.nlm.nih.gov/books/NBK223808/"],
+        "issue": ""
+      }
+    ],
+    "overall": "7개 카드의 핵심 주장은 모두 연구와 약동학 자료로 뒷받침된다. 다만 5시간 반감기 잔량은 단순 추정치이며, 400mg 수면 실험과 생체시계 실험은 표본이 작아 개인별 정확한 컷오프로 일반화할 수는 없다.",
+    "_citations": []
+  },
+  "passed": true,
+  "locked": [1, 3, 4, 5, 6, 7, 2]
+}

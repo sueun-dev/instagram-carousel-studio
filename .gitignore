@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+.DS_Store
+node_modules/
+output/
+coverage/
+.cache/
+*.log
+__pycache__/
+*.pyc
