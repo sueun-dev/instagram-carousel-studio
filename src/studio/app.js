@@ -1,6 +1,9 @@
 let STATE = null;
 let LAST = null; // last TEST result
+let PRODUCTION = null; // verified production copy waiting for final images
 let NICHES = {};
+
+const FINALIZE_LABEL = "글 완성 · 이미지 제작";
 
 function esc(s) {
   return String(s ?? "").replace(
@@ -64,7 +67,7 @@ async function boot() {
   }
   const pn = document.getElementById("p-niche");
   pn.innerHTML =
-    `<option value="">— 니치 선택 안 함 · 직접 입력 —</option>` +
+    `<option value="">— 분야 선택 안 함 · 직접 입력 —</option>` +
     Object.entries(NICHES)
       .map(
         ([k, v]) => `<option value="${esc(k)}">${esc(v.label || k)}</option>`,
@@ -84,7 +87,7 @@ function fillKeywords() {
   const list = (k && k.keywords) || [];
   const keyword = document.getElementById("p-keyword");
   keyword.innerHTML =
-    `<option value="">${k ? "— 키워드 선택 안 함 · 직접 입력 —" : "— 니치를 먼저 고르거나 직접 입력 —"}</option>` +
+    `<option value="">${k ? "— 키워드 선택 안 함 · 직접 입력 —" : "— 분야를 먼저 고르거나 직접 입력 —"}</option>` +
     list.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
   keyword.disabled = !k;
 }
@@ -143,7 +146,10 @@ document.querySelectorAll("nav button").forEach((b) =>
   }),
 );
 
-document.getElementById("prodBtn").addEventListener("click", produce);
+document.getElementById("prodBtn").addEventListener("click", produceCopy);
+document
+  .getElementById("prodFinishBtn")
+  .addEventListener("click", finishProduction);
 document.getElementById("genBtn").addEventListener("click", generate);
 document.getElementById("imgBtn").addEventListener("click", genImages);
 document
@@ -471,11 +477,30 @@ async function genImages() {
   }
 }
 
-async function produce() {
+function resetProductionFinalizer() {
+  const bar = document.getElementById("prodFinishBar");
+  const button = document.getElementById("prodFinishBtn");
+  bar.hidden = true;
+  button.disabled = false;
+  button.textContent = FINALIZE_LABEL;
+}
+
+function offerProductionFinalizer(data) {
+  PRODUCTION = data;
+  const bar = document.getElementById("prodFinishBar");
+  const button = document.getElementById("prodFinishBtn");
+  button.disabled = false;
+  button.textContent = FINALIZE_LABEL;
+  bar.hidden = false;
+}
+
+async function produceCopy() {
   const topic = document.getElementById("p-topic").value.trim();
   if (!topic) return alert("주제를 선택하거나 입력하세요");
   const btn = document.getElementById("prodBtn");
   btn.disabled = true;
+  PRODUCTION = null;
+  resetProductionFinalizer();
   document.getElementById("prodCards").innerHTML = "";
   document.getElementById("prodVerdict").innerHTML = "";
   document.getElementById("prodPackage").innerHTML = "";
@@ -494,32 +519,60 @@ async function produce() {
     renderPackage(data.result.carousel, data.dir, "prodPackage");
     if (!data.result.passed) {
       document.getElementById("prodStatus").textContent =
-        "검증 미통과 · 이미지 제작을 중단했습니다. 카드/캡션 피드백을 확인하세요.";
+        "글 검증 미통과 · 최종 제작은 열리지 않습니다. 카드와 캡션 피드백을 확인하세요.";
       return;
     }
-    document.getElementById("prodStatus").innerHTML =
-      `콘텐츠 완료(passed=${data.result.passed}) · <span class="spinner"></span> 이미지 생성 중… (gpt-image-2)`;
-    const ri = await fetch("/api/images", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ dir: data.dir }),
-    });
-    const idata = await ri.json();
-    if (!ri.ok) throw new Error(idata.error || "이미지 실패");
-    await composite(
-      data.result.carousel.cards,
-      idata.files,
-      "prodImgs",
-      data.dir,
-    );
-    renderPackage(data.result.carousel, data.dir, "prodPackage", true);
+    offerProductionFinalizer(data);
     document.getElementById("prodStatus").textContent =
-      `제작 완료 · Instagram 게시 패키지 저장됨 (${data.dir})`;
+      "글 생성과 검증이 끝났습니다. 내용을 확인한 뒤 아래 버튼으로 최종 제작하세요.";
     loadLibrary();
   } catch (e) {
     document.getElementById("prodStatus").textContent = "에러: " + e.message;
   } finally {
     btn.disabled = false;
+  }
+}
+
+async function finishProduction() {
+  if (!PRODUCTION?.result?.passed) return;
+  const button = document.getElementById("prodFinishBtn");
+  button.disabled = true;
+  button.textContent = "최종 제작 중…";
+  document.getElementById("prodImgs").innerHTML = "";
+  document.getElementById("prodStatus").innerHTML =
+    `<span class="spinner"></span> 이미지 생성 중… (${PRODUCTION.result.carousel.cards.length}장)`;
+  try {
+    const response = await fetch("/api/images", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ dir: PRODUCTION.dir }),
+    });
+    const imageData = await response.json();
+    if (!response.ok) throw new Error(imageData.error || "이미지 실패");
+    document.getElementById("prodStatus").textContent =
+      "이미지 생성 완료 · 게시용 카드 합성 중…";
+    await composite(
+      PRODUCTION.result.carousel.cards,
+      imageData.files,
+      "prodImgs",
+      PRODUCTION.dir,
+    );
+    renderPackage(
+      PRODUCTION.result.carousel,
+      PRODUCTION.dir,
+      "prodPackage",
+      true,
+    );
+    document.getElementById("prodStatus").textContent =
+      `최종 제작 완료 · Instagram 게시 패키지 저장됨 (${PRODUCTION.dir})`;
+    button.textContent = "최종 제작 완료 ✓";
+    loadLibrary();
+  } catch (e) {
+    document.getElementById("prodStatus").textContent =
+      "이미지 제작 실패 · 글은 그대로 보관됐습니다. 다시 시도하세요: " +
+      e.message;
+    button.disabled = false;
+    button.textContent = FINALIZE_LABEL;
   }
 }
 
@@ -551,6 +604,8 @@ async function loadLibrary() {
 
 async function openSaved(item) {
   const dir = item.dir;
+  PRODUCTION = null;
+  resetProductionFinalizer();
   document.getElementById("prodStatus").innerHTML =
     `<span class="spinner"></span> 불러오는 중…`;
   try {
@@ -572,6 +627,7 @@ async function openSaved(item) {
       item.hasPublishImages = true;
     } else {
       document.getElementById("prodImgs").innerHTML = "";
+      if (result.passed) offerProductionFinalizer({ result, dir });
     }
     renderPackage(
       result.carousel,
@@ -580,7 +636,11 @@ async function openSaved(item) {
       item.hasPublishImages,
       item.hasPostPackage,
     );
-    document.getElementById("prodStatus").textContent = `불러옴: ${dir}`;
+    document.getElementById("prodStatus").textContent = result.passed
+      ? item.hasPublishImages
+        ? `최종 제작물 불러옴: ${dir}`
+        : `글 불러옴 · 최종 이미지 제작 가능: ${dir}`
+      : `검증 미통과 글 불러옴: ${dir}`;
   } catch (e) {
     document.getElementById("prodStatus").textContent =
       "불러오기 실패: " + e.message;

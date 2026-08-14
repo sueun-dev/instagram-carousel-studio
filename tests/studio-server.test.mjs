@@ -118,6 +118,11 @@ test("Studio API integrates generation, image files, publish PNGs, listing, and 
       fetch(`${baseUrl}/app.js`),
     ]);
     assert.equal(page.status, 200);
+    const pageText = await page.text();
+    assert.match(pageText, />글 만들기</);
+    assert.match(pageText, /id="prodFinishBtn"/);
+    assert.match(pageText, />분야 \(선택\)</);
+    assert.doesNotMatch(pageText, />니치/);
     assert.equal(styles.headers.get("content-type"), "text/css; charset=utf-8");
     assert.equal(
       app.headers.get("content-type"),

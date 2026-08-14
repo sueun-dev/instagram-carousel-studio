@@ -7,7 +7,7 @@ const nichesFile = fileURLToPath(
   new URL("../src/config/niches.json", import.meta.url),
 );
 
-test("topic examples cover many niches without empty or duplicate keywords", async () => {
+test("topic examples cover many categories without empty or duplicate keywords", async () => {
   const config = JSON.parse(await readFile(nichesFile, "utf8"));
   const entries = Object.entries(config.niches || {});
   assert.equal(entries.length, 16);
