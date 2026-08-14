@@ -9,9 +9,10 @@ import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { existsSync, createReadStream } from "node:fs";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { join, extname, relative, sep } from "node:path";
+import { basename, join, extname, relative, sep } from "node:path";
 import { loadEnv } from "./lib/env.mjs";
 import { CAROUSEL_LIMITS, INSTAGRAM_IMAGE } from "./lib/carousel_contract.mjs";
+import { codexAuthStatus } from "./lib/codex.mjs";
 import {
   instagramImageFilename,
   pngDimensions,
@@ -37,8 +38,23 @@ const FILES = {
   settings: join(root, "config/settings.json"),
 };
 
-const TEXT_MODELS = ["gpt-5.6", "gpt-5.5", "gpt-5.4"];
-// Supported reasoning tiers for the configured OpenAI text models.
+const TEXT_PROVIDERS = [
+  {
+    id: "codex",
+    label: "ChatGPT 로그인 (OAuth)",
+    description: "Codex 로그인 세션으로 글 작성과 팩트체크",
+  },
+  {
+    id: "openai",
+    label: "OpenAI API 키",
+    description: "OPENAI_API_KEY로 Responses API 직접 호출",
+  },
+];
+const TEXT_MODELS = {
+  codex: ["gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.6-luna"],
+  openai: ["gpt-5.6", "gpt-5.5", "gpt-5.4"],
+};
+// Supported reasoning tiers for the configured text providers.
 const EFFORTS = ["minimal", "low", "medium", "high", "xhigh"];
 const MOODS = ["dark", "light"];
 
@@ -130,11 +146,14 @@ function runNode(args, { env, timeoutMs = 0 } = {}) {
     });
     child.on("close", (code) => {
       if (code === 0 || code === 2) finish(resolve, { stdout, stderr, code });
-      else
+      else {
+        const messages = [...stderr.matchAll(/Error:\s*([^\n]+)/g)];
+        const detail = messages.at(-1)?.[1]?.trim();
         finish(
           reject,
-          new Error(`${args[0]} exited ${code}: ${stderr.slice(-500)}`),
+          new Error(detail || `${basename(args[0])} 실행 실패 (exit ${code})`),
         );
+      }
     });
   });
 }
@@ -142,7 +161,15 @@ function runNode(args, { env, timeoutMs = 0 } = {}) {
 function childEnv(settings) {
   return {
     ...process.env,
-    INSTAGRAM_OPENAI_MODEL: settings.textModel || "gpt-5.6",
+    INSTAGRAM_CODEX_MODEL:
+      settings.textProvider === "codex"
+        ? settings.textModel || "gpt-5.6-terra"
+        : process.env.INSTAGRAM_CODEX_MODEL || "gpt-5.6-terra",
+    INSTAGRAM_CODEX_EFFORT: settings.effort || "medium",
+    INSTAGRAM_OPENAI_MODEL:
+      settings.textProvider === "openai"
+        ? settings.textModel || "gpt-5.6"
+        : process.env.INSTAGRAM_OPENAI_MODEL || "gpt-5.6",
     INSTAGRAM_OPENAI_EFFORT: settings.effort || "medium",
     INSTAGRAM_IMAGE_PROVIDER: settings.imageProvider || "openai",
     INSTAGRAM_IMAGE_SIZE: settings.imageSize || "1024x1536",
@@ -156,8 +183,8 @@ async function readSettings() {
     return { ...settings, tone: normalizeTone(settings.tone) };
   } catch {
     return {
-      textProvider: "openai",
-      textModel: "gpt-5.6",
+      textProvider: "codex",
+      textModel: "gpt-5.6-terra",
       effort: "medium",
       tone: DEFAULT_TONE,
       imageProvider: "openai",
@@ -169,6 +196,8 @@ async function readSettings() {
 export function createStudioServer({
   outputRoot = join(root, "../output"),
   runNodeProcess = runNode,
+  getCodexStatus = codexAuthStatus,
+  hasOpenAiApiKey = () => Boolean(process.env.OPENAI_API_KEY?.trim()),
 } = {}) {
   const server = createServer(async (req, res) => {
     try {
@@ -198,23 +227,30 @@ export function createStudioServer({
       }
 
       if (req.method === "GET" && path === "/api/state") {
-        const [content, verify, niches, settings] = await Promise.all([
-          readFile(FILES.content, "utf8"),
-          readFile(FILES.verify, "utf8"),
-          readFile(FILES.niches, "utf8"),
-          readSettings(),
-        ]);
+        const [content, verify, niches, settings, codexAuth] =
+          await Promise.all([
+            readFile(FILES.content, "utf8"),
+            readFile(FILES.verify, "utf8"),
+            readFile(FILES.niches, "utf8"),
+            readSettings(),
+            getCodexStatus(),
+          ]);
         return send(res, 200, {
           content,
           verify,
           niches,
           settings,
+          textProviders: TEXT_PROVIDERS,
           textModels: TEXT_MODELS,
           efforts: EFFORTS,
           tones: TONES,
           moods: MOODS,
           carouselLimits: CAROUSEL_LIMITS,
           publishImage: INSTAGRAM_IMAGE,
+          auth: {
+            codex: codexAuth,
+            openaiApiKeyConfigured: hasOpenAiApiKey(),
+          },
         });
       }
 
@@ -239,12 +275,34 @@ export function createStudioServer({
         const topic = String(body.topic || "").trim();
         if (!topic) return send(res, 400, { error: "topic required" });
         const settings = await readSettings();
+        const textProvider = settings.textProvider || "codex";
+        if (textProvider === "codex") {
+          const auth = await getCodexStatus();
+          if (!auth.available) {
+            return send(res, 400, {
+              error:
+                "Codex CLI를 찾을 수 없습니다. Codex를 설치하고 `codex login`으로 ChatGPT 로그인을 완료하세요.",
+            });
+          }
+          if (!auth.signedIn || auth.method !== "chatgpt") {
+            return send(res, 400, {
+              error:
+                "ChatGPT OAuth 로그인이 필요합니다. 터미널에서 `codex login`을 실행한 뒤 다시 시도하세요.",
+            });
+          }
+        }
+        if (textProvider === "openai" && !hasOpenAiApiKey()) {
+          return send(res, 400, {
+            error:
+              "OpenAI API 키 방식이 선택됐지만 OPENAI_API_KEY가 없습니다. ChatGPT 로그인(OAuth)을 선택하거나 .env에 키를 넣으세요.",
+          });
+        }
         const args = [
           join(root, "generate-carousel.mjs"),
           "--topic",
           topic,
           "--provider",
-          settings.textProvider || "openai",
+          textProvider,
           "--tone",
           settings.tone || DEFAULT_TONE,
           "--max-revisions",
@@ -288,6 +346,15 @@ export function createStudioServer({
         if (!existsSync(carouselFile))
           return send(res, 400, { error: "bad dir" });
         const settings = await readSettings();
+        if (
+          (settings.imageProvider || "openai") === "openai" &&
+          !hasOpenAiApiKey()
+        ) {
+          return send(res, 400, {
+            error:
+              "이미지 생성에는 OPENAI_API_KEY가 필요합니다. ChatGPT OAuth는 글 작성·검증에 사용되며 Images API 키를 대신하지 않습니다.",
+          });
+        }
         const args = [
           join(root, "generate-images.mjs"),
           "--in",

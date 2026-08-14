@@ -7,7 +7,8 @@
 // The whole quality standard ("no obvious content, only genuinely useful/novel,
 // judged for truth") lives in the SYSTEM PROMPTS under prompts/, not in code.
 //
-// Provider: the standard OpenAI API. Tests inject deterministic providers.
+// Providers: ChatGPT-authenticated Codex (default) or the OpenAI API.
+// Tests inject deterministic providers.
 //
 // Usage:
 //   node src/generate-carousel.mjs --topic "도파민 중독의 진짜 메커니즘"
@@ -24,12 +25,16 @@ import {
   validateCarousel,
 } from "./lib/carousel_contract.mjs";
 import { parseArgs, retry } from "./lib/runtime.mjs";
+import { createCodexProvider } from "./lib/codex.mjs";
 import { openaiComplete, openaiGrounded } from "./lib/openai.mjs";
 import { DEFAULT_TONE, getTone, withToneInstruction } from "./lib/tone.mjs";
 
 loadEnv();
 
-const PROVIDERS = { openai: openaiComplete };
+const PROVIDERS = {
+  codex: () => createCodexProvider(),
+  openai: () => ({ complete: openaiComplete, grounded: openaiGrounded }),
+};
 
 const promptPath = (name) =>
   fileURLToPath(new URL(`./prompts/${name}`, import.meta.url));
@@ -54,10 +59,10 @@ async function pickTopic(args) {
   return kw;
 }
 
-// Web-grounded fact-check via ChatGPT OAuth web_search. Returns per-card
+// Web-grounded fact-check via the selected provider. Returns per-card
 // { supported, confidence, sources[], issue } judged against real search hits.
-async function factCheckStage(carousel, factcheckSystem) {
-  const grounded = await openaiGrounded(
+async function factCheckStage(carousel, factcheckSystem, groundedProvider) {
+  const grounded = await groundedProvider(
     factcheckSystem,
     `팩트체크할 캐러셀 JSON:\n${JSON.stringify(carousel)}`,
     {
@@ -210,7 +215,7 @@ async function reviseSocialCopy(
 export async function generateCarousel({
   topic,
   initialCarousel,
-  provider = "openai",
+  provider = "codex",
   tone = DEFAULT_TONE,
   maxRevisions = 2,
   verify = true,
@@ -219,13 +224,16 @@ export async function generateCarousel({
   factChecker,
   log = () => {},
 }) {
-  // callLLM/factChecker are injectable for deterministic tests; production uses
-  // the ChatGPT OAuth providers.
-  const callLLM = callLLMOverride || PROVIDERS[provider];
-  if (!callLLM)
+  // callLLM/factChecker are injectable for deterministic tests. Production
+  // creates one provider runtime. Text turns share context for efficiency;
+  // grounded fact-checking stays isolated so tool permissions cannot leak.
+  const createProvider = PROVIDERS[provider];
+  if (!createProvider && !callLLMOverride)
     throw new Error(
       `unknown provider '${provider}'. use: ${Object.keys(PROVIDERS).join(", ")}`,
     );
+  const runtime = createProvider ? createProvider() : null;
+  const callLLM = callLLMOverride || runtime.complete;
 
   const selectedTone = getTone(tone);
 
@@ -242,7 +250,8 @@ export async function generateCarousel({
     "utf8",
   );
   const runFactCheck =
-    factChecker || ((c) => factCheckStage(c, factcheckSystem));
+    factChecker ||
+    ((c) => factCheckStage(c, factcheckSystem, runtime.grounded));
 
   let carousel = initialCarousel ? structuredClone(initialCarousel) : null;
   let lastVerdict = null;
@@ -412,7 +421,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const provider =
     typeof args.provider === "string"
       ? args.provider
-      : process.env.INSTAGRAM_TEXT_PROVIDER || "openai";
+      : process.env.INSTAGRAM_TEXT_PROVIDER || "codex";
   const tone =
     typeof args.tone === "string"
       ? args.tone

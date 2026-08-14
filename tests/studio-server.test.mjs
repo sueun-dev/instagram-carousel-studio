@@ -85,9 +85,20 @@ async function fakeSuccessRunner(args) {
   throw new Error(`unexpected script: ${args[0]}`);
 }
 
-async function withStudio(runNodeProcess, operation) {
+async function withStudio(runNodeProcess, operation, options = {}) {
   const outputRoot = await mkdtemp(join(tmpdir(), "instagram-studio-test-"));
-  const server = createStudioServer({ outputRoot, runNodeProcess });
+  const server = createStudioServer({
+    outputRoot,
+    runNodeProcess,
+    getCodexStatus:
+      options.getCodexStatus ||
+      (async () => ({
+        available: true,
+        signedIn: true,
+        method: "chatgpt",
+      })),
+    hasOpenAiApiKey: options.hasOpenAiApiKey || (() => true),
+  });
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", resolve);
@@ -123,6 +134,7 @@ test("Studio API integrates generation, image files, publish PNGs, listing, and 
     assert.match(pageText, /id="prodFinishBtn"/);
     assert.match(pageText, />분야 \(선택\)</);
     assert.doesNotMatch(pageText, />니치/);
+    assert.match(pageText, /id="textAuthLabel"/);
     assert.equal(styles.headers.get("content-type"), "text/css; charset=utf-8");
     assert.equal(
       app.headers.get("content-type"),
@@ -208,6 +220,17 @@ test("Studio exposes writing tones and forwards the saved tone to generation", a
   await withStudio(runner, async ({ baseUrl }) => {
     const state = await (await fetch(`${baseUrl}/api/state`)).json();
     assert.deepEqual(
+      state.textProviders.map((provider) => provider.id),
+      ["codex", "openai"],
+    );
+    assert.deepEqual(state.textModels.codex, [
+      "gpt-5.6-terra",
+      "gpt-5.6-sol",
+      "gpt-5.6-luna",
+    ]);
+    assert.equal(state.settings.textProvider, "codex");
+    assert.equal(state.auth.codex.method, "chatgpt");
+    assert.deepEqual(
       state.tones.map((tone) => tone.id),
       ["casual", "polite", "expert", "punchy"],
     );
@@ -222,11 +245,34 @@ test("Studio exposes writing tones and forwards the saved tone to generation", a
       generationArgs[generationArgs.indexOf("--tone") + 1],
       state.settings.tone,
     );
+    assert.equal(
+      generationArgs[generationArgs.indexOf("--provider") + 1],
+      "codex",
+    );
     assert.ok(generationArgs.includes("--generate-only"));
 
     const page = await (await fetch(`${baseUrl}/`)).text();
     assert.match(page, /id="s-tone"/);
+    assert.match(page, /id="s-textProvider"/);
   });
+});
+
+test("Studio blocks image generation with a clear key boundary", async () => {
+  await withStudio(
+    fakeSuccessRunner,
+    async ({ baseUrl }) => {
+      const generated = await postJson(baseUrl, "/api/generate", {
+        topic: "키 경계",
+        verify: true,
+      });
+      assert.equal(generated.status, 200);
+      const { dir } = await generated.json();
+      const response = await postJson(baseUrl, "/api/images", { dir });
+      assert.equal(response.status, 400);
+      assert.match((await response.json()).error, /OPENAI_API_KEY/);
+    },
+    { hasOpenAiApiKey: () => false },
+  );
 });
 
 test("Studio remains usable after provider errors, malformed output, and image failure", async () => {

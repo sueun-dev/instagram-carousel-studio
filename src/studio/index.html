@@ -27,6 +27,16 @@
             확정하면 gpt-image-2 배경과 Instagram 4:5 최종 이미지까지
             제작합니다.
           </p>
+          <div class="connection-strip" aria-live="polite">
+            <div class="connection-item">
+              <span class="connection-dot" id="textAuthDot"></span>
+              <span id="textAuthLabel">글 연결 확인 중…</span>
+            </div>
+            <div class="connection-item">
+              <span class="connection-dot" id="imageAuthDot"></span>
+              <span id="imageAuthLabel">이미지 연결 확인 중…</span>
+            </div>
+          </div>
           <div class="row">
             <div class="field">
               <label>분야 (선택)</label
@@ -101,9 +111,14 @@
         <div class="card">
           <h2>모델 &amp; 추론 설정</h2>
           <p class="desc">
-            콘텐츠는 OpenAI Responses API, 이미지는 gpt-image-2 API.
+            글은 ChatGPT 로그인(OAuth) 또는 OpenAI API 키 중에서 선택합니다.
+            이미지는 gpt-image-2 API 키를 사용합니다.
           </p>
           <div class="row">
+            <div class="field">
+              <label>글 연결 방식</label
+              ><select id="s-textProvider"></select>
+            </div>
             <div class="field">
               <label>텍스트 모델</label
               ><select id="s-textModel"></select>
@@ -130,6 +145,7 @@
               />
             </div>
           </div>
+          <p class="provider-help" id="providerHelp"></p>
           <p class="hint" style="margin-top: 10px">
             effort=high는 훨씬 느립니다(전체 루프 10분+). 기본 medium 권장.
           </p>
