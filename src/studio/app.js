@@ -25,18 +25,100 @@ function safeHttpUrl(value) {
   }
 }
 
+function textModelsFor(provider) {
+  const models = STATE?.textModels;
+  if (Array.isArray(models)) return models;
+  return models?.[provider] || [];
+}
+
+function fillTextModels(provider, selected = "") {
+  const models = textModelsFor(provider);
+  const value = models.includes(selected) ? selected : models[0] || selected;
+  const select = document.getElementById("s-textModel");
+  select.innerHTML = models
+    .map(
+      (model) =>
+        `<option value="${esc(model)}" ${model === value ? "selected" : ""}>${esc(model)}</option>`,
+    )
+    .join("");
+}
+
+function setConnection(dotId, labelId, ok, label) {
+  const dot = document.getElementById(dotId);
+  dot.className = `connection-dot ${ok ? "ok" : "bad"}`;
+  document.getElementById(labelId).textContent = label;
+}
+
+function renderConnectionStatus() {
+  const provider = STATE.settings.textProvider || "codex";
+  const codex = STATE.auth?.codex || {};
+  const hasApiKey = STATE.auth?.openaiApiKeyConfigured === true;
+  if (provider === "codex") {
+    const connected = codex.signedIn && codex.method === "chatgpt";
+    setConnection(
+      "textAuthDot",
+      "textAuthLabel",
+      connected,
+      connected
+        ? "글 · ChatGPT OAuth 연결됨"
+        : "글 · ChatGPT OAuth 로그인 필요 (`codex login`)",
+    );
+  } else {
+    setConnection(
+      "textAuthDot",
+      "textAuthLabel",
+      hasApiKey,
+      hasApiKey ? "글 · OpenAI API 키 연결됨" : "글 · OPENAI_API_KEY 필요",
+    );
+  }
+  setConnection(
+    "imageAuthDot",
+    "imageAuthLabel",
+    hasApiKey,
+    hasApiKey
+      ? "이미지 · OpenAI API 키 연결됨"
+      : "이미지 · OPENAI_API_KEY 필요",
+  );
+}
+
+function renderProviderHelp(provider) {
+  const codex = STATE.auth?.codex || {};
+  const hasApiKey = STATE.auth?.openaiApiKeyConfigured === true;
+  const help = document.getElementById("providerHelp");
+  if (provider === "codex") {
+    help.className = `provider-help ${codex.signedIn && codex.method === "chatgpt" ? "ok" : "bad"}`;
+    help.textContent =
+      codex.signedIn && codex.method === "chatgpt"
+        ? "ChatGPT OAuth 연결됨 · 글 작성과 웹 팩트체크에 API 키가 필요 없습니다."
+        : "ChatGPT OAuth 로그인이 필요합니다. 터미널에서 codex login을 실행하세요.";
+  } else {
+    help.className = `provider-help ${hasApiKey ? "ok" : "bad"}`;
+    help.textContent = hasApiKey
+      ? "OPENAI_API_KEY 연결됨 · Responses API를 직접 사용합니다."
+      : "OPENAI_API_KEY가 없습니다. .env에 키를 넣고 Studio를 다시 시작하세요.";
+  }
+}
+
 async function boot() {
   STATE = await (await fetch("/api/state")).json();
   document.getElementById("content").value = STATE.content;
   document.getElementById("verify").value = STATE.verify;
   document.getElementById("niches").value = STATE.niches;
-  const tm = document.getElementById("s-textModel");
-  tm.innerHTML = STATE.textModels
+  const provider = document.getElementById("s-textProvider");
+  provider.innerHTML = (STATE.textProviders || [])
     .map(
-      (m) =>
-        `<option ${m === STATE.settings.textModel ? "selected" : ""}>${m}</option>`,
+      ({ id, label, description }) =>
+        `<option value="${esc(id)}" ${id === (STATE.settings.textProvider || "codex") ? "selected" : ""}>${esc(label)} — ${esc(description)}</option>`,
     )
     .join("");
+  provider.onchange = () => {
+    fillTextModels(provider.value);
+    renderProviderHelp(provider.value);
+  };
+  fillTextModels(
+    STATE.settings.textProvider || "codex",
+    STATE.settings.textModel,
+  );
   const ef = document.getElementById("s-effort");
   ef.innerHTML = STATE.efforts
     .map(
@@ -60,6 +142,8 @@ async function boot() {
     .join("");
   document.getElementById("s-maxRevisions").value =
     STATE.settings.maxRevisions ?? 2;
+  renderConnectionStatus();
+  renderProviderHelp(STATE.settings.textProvider || "codex");
   try {
     NICHES = JSON.parse(STATE.niches).niches || {};
   } catch {
@@ -112,6 +196,7 @@ async function save(target) {
 async function saveSettings() {
   const settings = {
     ...STATE.settings,
+    textProvider: document.getElementById("s-textProvider").value,
     textModel: document.getElementById("s-textModel").value,
     effort: document.getElementById("s-effort").value,
     tone: document.getElementById("s-tone").value,
@@ -128,6 +213,8 @@ async function saveSettings() {
   });
   if (r.ok) {
     STATE.settings = settings;
+    renderConnectionStatus();
+    renderProviderHelp(settings.textProvider);
     toast("settings");
   } else alert("저장 실패");
 }

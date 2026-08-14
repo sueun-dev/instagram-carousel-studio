@@ -1,7 +1,7 @@
 {
   "_comment": "Instagram 캐러셀 파이프라인 설정. Studio에서 편집됨.",
-  "textProvider": "openai",
-  "textModel": "gpt-5.6",
+  "textProvider": "codex",
+  "textModel": "gpt-5.6-terra",
   "effort": "medium",
   "tone": "casual",
   "imageProvider": "openai",
